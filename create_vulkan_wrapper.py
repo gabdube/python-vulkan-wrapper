@@ -52,14 +52,14 @@ FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETUR
 
 ENUM_LINE_TEMPLATE = """{ENUM_NAME} = {ENUM_VALUE}$"""
 ENUM_TEMPLATE = """
-# {ENUM_NAME}
+{ENUM_NAME} = c_uint
 {ENUM_LINES}
 """
 
 STRUCTURE_ARGS_TEMPLATE = """`('{MEMBER_NAME}', {MEMBER_TYPE}),$"""
 STRUCTURE_TEMPLATE = """
 {STRUCT_NAME} = None
-define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$$
+define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
 """
 
 IMPORTS_TEMPLATE = """
@@ -277,7 +277,6 @@ def parse_structures():
         struct_mems = ''.join(struct_mems)
 
         o.write( STRUCTURE_TEMPLATE.format(STRUCT_NAME=struct_name, STRUCTURE_ARGS=struct_mems) )
-        o.write('\n')
 
 def parse_funcpointers():
     s = SHARED
