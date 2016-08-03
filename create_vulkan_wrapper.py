@@ -47,7 +47,7 @@ FLAG_TEMPLATE = """{FLAG_NAME} = c_uint$"""
 
 BASETYPE_TEMPLATE = """{BASETYPE_NAME} = {BASETYPE_TYPE}$"""
 
-FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE}, """
+FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE},"""
 FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETURN}, {PROTOTYPE_ARGS})$"""
 
 ENUM_LINE_TEMPLATE = """{ENUM_NAME} = {ENUM_VALUE}$"""
@@ -56,8 +56,11 @@ ENUM_TEMPLATE = """
 {ENUM_LINES}
 """
 
-STRUCTURE_ARGS_TEMPLATE = """('{MEMBER_NAME}', {MEMBER_TYPE}), """
-STRUCTURE_TEMPLATE = """define_structure('{STRUCT_NAME}', {STRUCTURE_ARGS})"""
+STRUCTURE_ARGS_TEMPLATE = """`('{MEMBER_NAME}', {MEMBER_TYPE}),$"""
+STRUCTURE_TEMPLATE = """
+{STRUCT_NAME} = None
+define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$$
+"""
 
 IMPORTS_TEMPLATE = """
 # -*- coding: utf-8 -*-
@@ -129,7 +132,7 @@ def pythonize_field_name(_name):
     # Remove useless pointer identifier in field name
     if name.startswith('p_'):
         name = name[2::]
-        
+
     return name
 
 def remove_prefix(name):
