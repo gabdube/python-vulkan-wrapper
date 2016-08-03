@@ -31,6 +31,7 @@ TYPES_MAP = {
     'uint64_t': 'c_uint64',
     'int32_t': 'c_int',
     'size_t': 'c_size_t',
+    'char': 'c_char',
     'char*': 'c_char_p',
 }
 
@@ -40,6 +41,10 @@ TYPES_MAP = {
 # ` are replaced by ' '*INDENT
 # ? are replaced by ''
 # $ are replaced by '\n'
+
+ARRAY_TEMPLATE = """({ARRAY_TYPE}*{ARRAY_LENGTH})"""
+
+POINTER_TEMPLATE = """POINTER({POINTER_TYPE})"""
 
 HANDLE_TEMPLATE = """{HANDLE_NAME} = c_void_p$"""
 
@@ -64,7 +69,7 @@ define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
 
 IMPORTS_TEMPLATE = """
 # -*- coding: utf-8 -*-
-from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char_p, CFUNCTYPE, Structure)
+from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, CFUNCTYPE, Structure, POINTER)
 """
 
 MACROS_TEMPLATE = """
@@ -164,8 +169,14 @@ def map_ctypes(type_item):
     return py_type
 
 def filter_types(filter):
-    return (t for t in first(SHARED['root'].iter('types')) if t.get('category') == filter)
+    return (t for t in SHARED['root'].find('types') if t.get('category') == filter)
 
+def format_array(_type, length):
+    return ARRAY_TEMPLATE.format(ARRAY_TYPE=_type, ARRAY_LENGTH=length)
+def format_pointer(_type):
+    if _type is None:
+        _type = TYPES_MAP['void*']
+    return POINTER_TEMPLATE.format(POINTER_TYPE=_type)
 ### Utility functions STOP  ###
 
 ### Parsing functions START ###
@@ -258,8 +269,25 @@ def parse_enums():
         o.write( ENUM_TEMPLATE.format(ENUM_NAME=enum_name, ENUM_LINES=enum_mems) )
 
 def parse_structure_member(struct_mem):
-    mem_type = map_ctypes(first(struct_mem.iter('type')).text)
-    mem_name = pythonize_field_name(first(struct_mem.iter('name')).text)
+    type_node = first(struct_mem.iter('type'))
+    name_node = first(struct_mem.iter('name'))
+    mem_type = map_ctypes(type_node.text)
+    mem_name = pythonize_field_name(name_node.text)
+
+    # Check if type is a pointer
+    if type_node.tail is not None and type_node.tail[0] == '*':
+        mem_type = format_pointer(mem_type)
+
+    # Check if type is an array
+    if struct_mem.find('enum') is not None or ( (name_node.tail or ' ')[0] == '[' ):
+        array_length = struct_mem.find('enum')
+        if array_length is None:
+            # Array length is a literal
+            array_length = name_node.tail.replace('[', '').replace(']', '')
+        else:
+            # Array length is an enum
+            array_length = remove_prefix(array_length.text)
+        mem_type = format_array(mem_type, array_length)
 
     return (mem_name, mem_type)
 
