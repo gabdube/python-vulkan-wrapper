@@ -9,6 +9,9 @@ INDENT = 4
 # Map of used literal suffix to ctypes type
 TYPES_SUFFIX = {'U': 'c_uint', 'ULL': 'c_uint64', 'f': 'c_float'}
 
+# Used internally when resolving commands family names
+HANDLE_NAMES = []
+
 # Global properties used through the exportation
 SHARED = {
     'xml_source': 'file',        # 'file' or 'web'
@@ -23,7 +26,7 @@ SHARED = {
 
 # map of "C" type to ctypes type
 TYPES_MAP = {
-    'void': None,
+    'void': 'None',
     'void*': 'c_void_p',
     'float': 'c_float',
     'uint8_t': 'c_uint8',
@@ -59,10 +62,6 @@ if system_name == 'Windows':
 elif system_name == 'Linux':
 `FUNCTYPE = CFUNCTYPE
 `vk = cdll.LoadLibrary('libvulkan.so.1')
-?
-
-NULL_HANDLE = c_void_p(0)
-?
 def MAKE_VERSION(major, minor, patch):
 `return (major<<22) | (minor<<12) | patch
 ?
@@ -75,13 +74,11 @@ def load_functions(vk_object, functions_list, loader):
 ``py_name = name.decode()[2::]
 ``fn_ptr = loader(vk_object, name)
 ``if fn_ptr is not None:
-```fn = (CFUNCTYPE(return_type, *args))(fn_ptr)
+```fn = (FUNCTYPE(return_type, *args))(fn_ptr)
 ```functions.append((py_name, fn))
 ?
 API_VERSION_1_0 = MAKE_VERSION(1,0,0)
 """
-### Templates END ###
-
 
 ARRAY_TEMPLATE = """({ARRAY_TYPE}*{ARRAY_LENGTH})"""
 
@@ -92,9 +89,6 @@ HANDLE_TEMPLATE = """{HANDLE_NAME} = {HANDLE_TYPE}$"""
 FLAG_TEMPLATE = """{FLAG_NAME} = c_uint$"""
 
 BASETYPE_TEMPLATE = """{BASETYPE_NAME} = {BASETYPE_TYPE}$"""
-
-FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE},"""
-FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETURN}, {PROTOTYPE_ARGS})$"""
 
 ENUM_LINE_TEMPLATE = """{ENUM_NAME} = {ENUM_VALUE}$"""
 ENUM_TEMPLATE = """
@@ -107,6 +101,16 @@ STRUCTURE_TEMPLATE = """
 {STRUCT_NAME} = None
 define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
 """
+
+FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE}, """
+FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETURN}, {PROTOTYPE_ARGS})$"""
+
+COMMAND_ARGS_TEMPLATE = """{COMMAND_ARG_TYPE}, """
+COMMAND_DEFINITION_TEMPLATE = """`(b'{COMMAND_NAME}', {COMMAND_RETURN}, {COMMAND_ARGS}),$"""
+COMMAND_TEMPLATE = """{COMMAND_FAMILY_NAME}Functions = (${COMMAND_DEFINITIONS}$)$$"""
+
+
+### Templates END ###
 
 
 ### Utility functions START ###
@@ -178,12 +182,11 @@ def map_ctypes(type_item):
 
 def filter_types(filter):
     return (t for t in SHARED['root'].find('types') if t.get('category') == filter)
-
 def format_array(_type, length):
     return ARRAY_TEMPLATE.format(ARRAY_TYPE=_type, ARRAY_LENGTH=length)
 def format_pointer(_type):
-    if _type is None:
-        _type = TYPES_MAP['void*']
+    if _type == 'None':
+        return TYPES_MAP['void*']
     return POINTER_TEMPLATE.format(POINTER_TYPE=_type)
 ### Utility functions STOP  ###
 
@@ -233,6 +236,7 @@ def parse_handles():
 
         handle_name = remove_prefix(first(handle.iter('name')).text)
         o.write(HANDLE_TEMPLATE.format(HANDLE_NAME=handle_name, HANDLE_TYPE=handle_type))
+        HANDLE_NAMES.append(handle_name)
 
     o.write('\n')
 
@@ -343,6 +347,45 @@ def parse_funcpointers():
 
     o.write('\n')
 
+def parse_command_argument_type(argtype):
+    cmd_arg_type = map_ctypes(argtype.text)
+    if argtype.tail is not None and argtype.tail[0] == "*":
+        cmd_arg_type = format_pointer(cmd_arg_type)
+    return COMMAND_ARGS_TEMPLATE.format(COMMAND_ARG_TYPE=cmd_arg_type)
+
+def parse_commands():
+    s = SHARED
+    o = s['output']
+
+    o.write('\n# FUNCTIONS \n\n')
+
+    commands_groups = {}
+    commands = s['root'].find('commands')
+    for command in commands:
+        command_type, command_name = command.find('proto')[::]
+        command_type = map_ctypes(command_type.text)
+        command_name = command_name.text
+
+        _command_params = [ p.find('type') for p in command.iter('param') if p.find('type') is not None]
+        command_params = (parse_command_argument_type(p) for p in _command_params)
+        command_params = ''.join(command_params)
+        
+        # Commands are regrouped in "families". The family name being the first argument of the command
+        # Functions that do not belong to a family (ex: VkCreateInstance) are assigned to the 'loader' family
+        cmd = COMMAND_DEFINITION_TEMPLATE.format(COMMAND_NAME=command_name, COMMAND_RETURN=command_type, COMMAND_ARGS=command_params)
+        group_key = map_ctypes(_command_params[0].text)
+        if not group_key in HANDLE_NAMES:
+            group_key = "Loader"
+        
+        if group_key not in commands_groups.keys():
+            commands_groups[group_key] = [cmd]
+        else:
+            commands_groups[group_key].append(cmd)
+
+    for cmd_family, cmds in commands_groups.items():
+        cmds = ''.join(cmds)
+        o.write(COMMAND_TEMPLATE.format(COMMAND_FAMILY_NAME=cmd_family, COMMAND_DEFINITIONS=cmds))
+        
 
 def end_generation():
     s = SHARED
@@ -361,6 +404,7 @@ def export():
     parse_enums()
     parse_structures()
     parse_funcpointers()
+    parse_commands()
     end_generation()
 
 ### Parsing functions STOP  ###
