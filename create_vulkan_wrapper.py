@@ -15,7 +15,7 @@ SHARED = {
     'xml_path': 'vk.xml',        # If source is 'file': file path of the xml. If source is 'web': url to the xml
     'output_file_name': 'vk.py', # Output name
 
-    # Value used internally
+    # Values used internally
     'xml': None,
     'root': None,
     'output': None,
@@ -42,11 +42,52 @@ TYPES_MAP = {
 # ? are replaced by ''
 # $ are replaced by '\n'
 
+# Static stuff required for the library to work
+
+IMPORTS_TEMPLATE = """
+# -*- coding: utf-8 -*-
+from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, CFUNCTYPE, Structure, POINTER)
+from platform import system
+"""
+
+MACROS_TEMPLATE = """
+# Library imports
+system_name = system()
+if system_name == 'Windows':
+`FUNCTYPE = WINFUNCTYPE
+`vk = windll.LoadLibrary('vulkan-1')
+elif system_name == 'Linux':
+`FUNCTYPE = CFUNCTYPE
+`vk = cdll.LoadLibrary('libvulkan.so.1')
+?
+
+NULL_HANDLE = c_void_p(0)
+?
+def MAKE_VERSION(major, minor, patch):
+`return (major<<22) | (minor<<12) | patch
+?
+def define_structure(name, *args):
+`return type(name, (Structure,), {'_fields_': args})
+?
+def load_functions(vk_object, functions_list, loader):
+`functions = []
+`for name, return_type, *args in functions_list:
+``py_name = name.decode()[2::]
+``fn_ptr = loader(vk_object, name)
+``if fn_ptr is not None:
+```fn = (CFUNCTYPE(return_type, *args))(fn_ptr)
+```functions.append((py_name, fn))
+?
+API_VERSION_1_0 = MAKE_VERSION(1,0,0)
+"""
+### Templates END ###
+
+
 ARRAY_TEMPLATE = """({ARRAY_TYPE}*{ARRAY_LENGTH})"""
 
 POINTER_TEMPLATE = """POINTER({POINTER_TYPE})"""
 
-HANDLE_TEMPLATE = """{HANDLE_NAME} = c_void_p$"""
+HANDLE_TEMPLATE = """{HANDLE_NAME} = {HANDLE_TYPE}$"""
 
 FLAG_TEMPLATE = """{FLAG_NAME} = c_uint$"""
 
@@ -66,39 +107,6 @@ STRUCTURE_TEMPLATE = """
 {STRUCT_NAME} = None
 define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
 """
-
-IMPORTS_TEMPLATE = """
-# -*- coding: utf-8 -*-
-from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, CFUNCTYPE, Structure, POINTER)
-"""
-
-MACROS_TEMPLATE = """
-NULL_HANDLE = c_void_p(0)
-?
-def MAKE_VERSION(major, minor, patch):
-`return (major<<22) | (minor<<12) | patch
-?
-API_VERSION_1_0 = MAKE_VERSION(1,0,0)
-?
-def define_structure(name, *args):
-`return type(name, (Structure,), {'_fields_': args})
-?
-def load_functions(vk_object, functions_list, loader):
-`functions = []
-`for name, return_type, *args in functions_list:
-``py_name = name.decode()[2::]
-``fn_ptr = loader(vk_object, name)
-``if fn_ptr is not None:
-```fn = (CFUNCTYPE(return_type, *args))(fn_ptr)
-```functions.append((py_name, fn))
-?
-def load_instance_functions(instance):
-`return load_functions(instance, INSTANCE_FUNCTIONS, GetInstanceProcAddr)
-?
-def load_device_functions(device, loader):
-`return load_functions(device, DEVICE_FUNCTIONS, loader)
-"""
-### Templates END ###
 
 
 ### Utility functions START ###
@@ -218,8 +226,13 @@ def parse_handles():
     o.write('\n# HANDLES\n\n')
 
     for handle in filter_types('handle'):
+        if handle.find('type').text == 'VK_DEFINE_HANDLE':
+            handle_type = TYPES_MAP['size_t']
+        else:
+            handle_type = TYPES_MAP['uint64_t']
+
         handle_name = remove_prefix(first(handle.iter('name')).text)
-        o.write(HANDLE_TEMPLATE.format(HANDLE_NAME=handle_name))
+        o.write(HANDLE_TEMPLATE.format(HANDLE_NAME=handle_name, HANDLE_TYPE=handle_type))
 
     o.write('\n')
 
