@@ -49,19 +49,23 @@ TYPES_MAP = {
 
 IMPORTS_TEMPLATE = """
 # -*- coding: utf-8 -*-
-from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, CFUNCTYPE, Structure, POINTER)
+from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, Structure, POINTER)
 from platform import system
+import sys
 """
 
-MACROS_TEMPLATE = """
-# Library imports
+INITIALIZATION_TEMPLATE = """
+# Sysem initialization
 system_name = system()
 if system_name == 'Windows':
+`from ctypes import WINFUNCTYPE, windll
 `FUNCTYPE = WINFUNCTYPE
 `vk = windll.LoadLibrary('vulkan-1')
 elif system_name == 'Linux':
+`from ctypes import CFUNCTYPE, cdll
 `FUNCTYPE = CFUNCTYPE
 `vk = cdll.LoadLibrary('libvulkan.so.1')
+?
 def MAKE_VERSION(major, minor, patch):
 `return (major<<22) | (minor<<12) | patch
 ?
@@ -98,8 +102,7 @@ ENUM_TEMPLATE = """
 
 STRUCTURE_ARGS_TEMPLATE = """`('{MEMBER_NAME}', {MEMBER_TYPE}),$"""
 STRUCTURE_TEMPLATE = """
-{STRUCT_NAME} = None
-define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
+{STRUCT_NAME} = define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
 """
 
 FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE}, """
@@ -107,8 +110,21 @@ FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETUR
 
 COMMAND_ARGS_TEMPLATE = """{COMMAND_ARG_TYPE}, """
 COMMAND_DEFINITION_TEMPLATE = """`(b'{COMMAND_NAME}', {COMMAND_RETURN}, {COMMAND_ARGS}),$"""
-COMMAND_TEMPLATE = """{COMMAND_FAMILY_NAME}Functions = (${COMMAND_DEFINITIONS}$)$$"""
+COMMAND_TEMPLATE = """{COMMAND_FAMILY_NAME}Functions = (${COMMAND_DEFINITIONS})$$"""
 
+POST_INITIALIZATION_TEMPLATE = """
+GetInstanceProcAddr = vk.vkGetInstanceProcAddr
+GetInstanceProcAddr.restype = c_void_p
+GetInstanceProcAddr.argtypes = (Instance, c_char_p)
+
+print(local())
+
+# Load the loader functions in the module namespace
+for function_name, return_type, *args in LoaderFunctions:
+`if function_name == 'vkGetInstanceProcAddr':
+``continue
+
+"""
 
 ### Templates END ###
 
@@ -216,11 +232,8 @@ def begin_generation():
 def add_imports():
     SHARED['output'].write(IMPORTS_TEMPLATE)
 
-def add_macros():
-    s = SHARED
-    o = s['output']
-    o.write("\n# MACROS\n\n")
-    o.write(MACROS_TEMPLATE+"\n")
+def add_initialization():
+    SHARED['output'].write("\n\n"+INITIALIZATION_TEMPLATE+"\n")
 
 def parse_handles():
     s = SHARED
@@ -276,7 +289,7 @@ def parse_enums():
     o.write('# ENUMS\n\n')
 
     for enum in s['root'].iter('enums'):
-        enum_name = remove_prefix(enum.get('name'))
+        enum_name = remove_prefix(enum.get('name').replace(' ', '_'))
 
         enum_mems = ( ( enum_mem.get('name'), value_or_bitpos(enum_mem) ) for enum_mem in enum if enum_mem.tag == 'enum')
         enum_mems = ( ( remove_prefix(n), pythonize_value(v) ) for n, v in enum_mems)
@@ -374,7 +387,7 @@ def parse_commands():
         # Functions that do not belong to a family (ex: VkCreateInstance) are assigned to the 'loader' family
         cmd = COMMAND_DEFINITION_TEMPLATE.format(COMMAND_NAME=command_name, COMMAND_RETURN=command_type, COMMAND_ARGS=command_params)
         group_key = map_ctypes(_command_params[0].text)
-        if not group_key in HANDLE_NAMES:
+        if not group_key in HANDLE_NAMES or command_name == 'vkGetInstanceProcAddr':
             group_key = "Loader"
         
         if group_key not in commands_groups.keys():
@@ -387,6 +400,8 @@ def parse_commands():
         o.write(COMMAND_TEMPLATE.format(COMMAND_FAMILY_NAME=cmd_family, COMMAND_DEFINITIONS=cmds))
         
 
+def add_post_initialization():
+    SHARED['output'].write("\n\n"+POST_INITIALIZATION_TEMPLATE+"\n")
 def end_generation():
     s = SHARED
     s['output'].close()
@@ -397,7 +412,7 @@ def export():
     load_xml()
     begin_generation()
     add_imports()
-    add_macros()
+    add_initialization()
     parse_basetypes()
     parse_handles()
     parse_flags()
@@ -405,6 +420,7 @@ def export():
     parse_structures()
     parse_funcpointers()
     parse_commands()
+    add_post_initialization()
     end_generation()
 
 ### Parsing functions STOP  ###
