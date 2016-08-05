@@ -12,6 +12,9 @@ TYPES_SUFFIX = {'U': 'c_uint', 'ULL': 'c_uint64', 'f': 'c_float'}
 # Used internally when resolving commands family names
 HANDLE_NAMES = []
 
+# All defined indentifiers. Filled while parsing the xml
+DEFINED_IDENTIFIERS = ['None', 'c_void_p', 'c_float', 'c_uint8', 'c_cuint', 'c_uint64', 'c_int', 'c_uint', 'c_size_t', 'c_char', 'c_char_p']
+
 # Global properties used through the exportation
 SHARED = {
     'xml_source': 'file',        # 'file' or 'web'
@@ -106,7 +109,7 @@ STRUCTURE_TEMPLATE = """
 """
 
 FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE}, """
-FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = CFUNCTYPE( {PROTOTYPE_RETURN}, {PROTOTYPE_ARGS})$"""
+FUNCTIONS_PROTOTYPE_TEMPLATE = """{PROTOTYPE_NAME} = FUNCTYPE( {PROTOTYPE_RETURN}, {PROTOTYPE_ARGS})$"""
 
 COMMAND_ARGS_TEMPLATE = """{COMMAND_ARG_TYPE}, """
 COMMAND_DEFINITION_TEMPLATE = """`(b'{COMMAND_NAME}', {COMMAND_RETURN}, {COMMAND_ARGS}),$"""
@@ -177,7 +180,11 @@ def remove_prefix(name):
     return name
 
 def first(iterator):
-    return next(iter(iterator))
+    try: 
+        return next(iter(iterator))
+    except:
+        return None
+        
 def second(iterator):
     it = iter(iterator)
     next(it)
@@ -186,7 +193,10 @@ def map_ctypes(type_item):
     if isinstance(type_item, str):
         type_name = type_item
     else:
-        tail = type_item.tail[0] # Will be * if type is a pointer
+        if type_item.tail is not None:
+            tail = type_item.tail[0] # Will be * if type is a pointer
+        else:
+            tail = ''
         type_name = (type_item.text+tail).strip()
 
     if type_name in TYPES_MAP.keys():
@@ -204,6 +214,7 @@ def format_pointer(_type):
     if _type == 'None':
         return TYPES_MAP['void*']
     return POINTER_TEMPLATE.format(POINTER_TYPE=_type)
+
 ### Utility functions STOP  ###
 
 ### Parsing functions START ###
@@ -250,6 +261,7 @@ def parse_handles():
         handle_name = remove_prefix(first(handle.iter('name')).text)
         o.write(HANDLE_TEMPLATE.format(HANDLE_NAME=handle_name, HANDLE_TYPE=handle_type))
         HANDLE_NAMES.append(handle_name)
+        DEFINED_IDENTIFIERS.append(handle_name)
 
     o.write('\n')
 
@@ -265,6 +277,7 @@ def parse_basetypes():
         basetype_name = remove_prefix(first(basetype.iter('name')).text)
 
         o.write(BASETYPE_TEMPLATE.format(BASETYPE_NAME=basetype_name, BASETYPE_TYPE=basetype_type))
+        DEFINED_IDENTIFIERS.append(basetype_name)
 
     o.write('\n')
 
@@ -277,6 +290,7 @@ def parse_flags():
     for flag in filter_types('bitmask'):
         flag_name = remove_prefix(first(flag.iter('name')).text)
         o.write(FLAG_TEMPLATE.format(FLAG_NAME=flag_name))
+        DEFINED_IDENTIFIERS.append(flag_name)
 
     o.write('\n')
 
@@ -297,6 +311,32 @@ def parse_enums():
         enum_mems = ''.join(enum_mems)
 
         o.write( ENUM_TEMPLATE.format(ENUM_NAME=enum_name, ENUM_LINES=enum_mems) )
+        DEFINED_IDENTIFIERS.append(enum_name)
+
+def parse_funcpointers():
+    s = SHARED
+    o = s['output']
+
+    def extract_return_type(text):
+        clean_text = text.replace('typedef', '').replace('(VKAPI_PTR *', '').strip()
+        return map_ctypes(clean_text)
+
+    o.write('\n# FUNC POINTERS\n\n')
+
+    for ptr in filter_types('funcpointer'):
+        name = remove_prefix(first(ptr.iter('name')).text)
+        
+        ptrs_args_types = iter(ptr.iter('type'))
+        return_v = extract_return_type(next(ptrs_args_types).text)
+
+        ptrs_args_types = (map_ctypes(t) for t in ptrs_args_types)
+        ptrs_args_types = (FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE.format(PROTOTYPE_ARG_TYPE=t) for t in ptrs_args_types)
+        ptrs_args_types = "".join(ptrs_args_types)
+
+        o.write(FUNCTIONS_PROTOTYPE_TEMPLATE.format(PROTOTYPE_NAME=name, PROTOTYPE_ARGS=ptrs_args_types, PROTOTYPE_RETURN=return_v))
+        DEFINED_IDENTIFIERS.append(name)
+
+    o.write('\n')
 
 def parse_structure_member(struct_mem):
     type_node = first(struct_mem.iter('type'))
@@ -321,6 +361,31 @@ def parse_structure_member(struct_mem):
 
     return (mem_name, mem_type)
 
+def parse_struct(struct, o):
+    struct_name = remove_prefix(struct.get('name'))
+    if struct_name in DEFINED_IDENTIFIERS:
+        return
+    else:
+        DEFINED_IDENTIFIERS.append(struct_name)
+
+    members = list(struct.iter('member'))
+
+    # Check if there is a dependency that must be parsed first
+    struct_types = ( map_ctypes(mem.find('type').text) for mem in members)
+    for t in struct_types:
+        if t not in DEFINED_IDENTIFIERS:
+            struct = first( (s for s in filter_types('struct') if s.get('name') == 'Vk'+t) )
+            if struct is None:
+                print("{} was not found".format(t))
+            else:
+                parse_struct(struct, o)
+
+    struct_mems = ( parse_structure_member(struct_mem) for struct_mem in members )
+    struct_mems = (STRUCTURE_ARGS_TEMPLATE.format(MEMBER_NAME=n, MEMBER_TYPE=t) for n, t in struct_mems)
+    struct_mems = ''.join(struct_mems)
+
+    o.write( STRUCTURE_TEMPLATE.format(STRUCT_NAME=struct_name, STRUCTURE_ARGS=struct_mems) )
+
 def parse_structures():
     s = SHARED
     o = s['output']
@@ -328,37 +393,7 @@ def parse_structures():
     o.write('\n# STRUCTURES\n\n')
 
     for struct in filter_types('struct'):
-        struct_name = remove_prefix(struct.get('name'))
-
-        struct_mems = ( parse_structure_member(struct_mem) for struct_mem in struct.iter('member') )
-        struct_mems = (STRUCTURE_ARGS_TEMPLATE.format(MEMBER_NAME=n, MEMBER_TYPE=t) for n, t in struct_mems)
-        struct_mems = ''.join(struct_mems)
-
-        o.write( STRUCTURE_TEMPLATE.format(STRUCT_NAME=struct_name, STRUCTURE_ARGS=struct_mems) )
-
-def parse_funcpointers():
-    s = SHARED
-    o = s['output']
-
-    def extract_return_type(text):
-        clean_text = text.replace('typedef', '').replace('(VKAPI_PTR *', '').strip()
-        return map_ctypes(clean_text)
-
-    o.write('\n# FUNC POINTERS\n\n')
-
-    for ptr in filter_types('funcpointer'):
-        name = remove_prefix(first(ptr.iter('name')).text)
-        
-        ptrs_args_types = iter(ptr.iter('type'))
-        return_v = extract_return_type(next(ptrs_args_types).text)
-
-        ptrs_args_types = (map_ctypes(t) for t in ptrs_args_types)
-        ptrs_args_types = (FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE.format(PROTOTYPE_ARG_TYPE=t) for t in ptrs_args_types)
-        ptrs_args_types = "".join(ptrs_args_types)
-
-        o.write(FUNCTIONS_PROTOTYPE_TEMPLATE.format(PROTOTYPE_NAME=name, PROTOTYPE_ARGS=ptrs_args_types, PROTOTYPE_RETURN=return_v))
-
-    o.write('\n')
+        parse_struct(struct, o)
 
 def parse_command_argument_type(argtype):
     cmd_arg_type = map_ctypes(argtype.text)
@@ -417,8 +452,8 @@ def export():
     parse_handles()
     parse_flags()
     parse_enums()
-    parse_structures()
     parse_funcpointers()
+    parse_structures()
     parse_commands()
     add_post_initialization()
     end_generation()
