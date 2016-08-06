@@ -13,7 +13,9 @@ TYPES_SUFFIX = {'U': 'c_uint', 'ULL': 'c_uint64', 'f': 'c_float'}
 HANDLE_NAMES = []
 
 # All defined indentifiers. Filled while parsing the xml
-DEFINED_IDENTIFIERS = ['None', 'c_void_p', 'c_float', 'c_uint8', 'c_cuint', 'c_uint64', 'c_int', 'c_uint', 'c_size_t', 'c_char', 'c_char_p']
+DEFINED_IDENTIFIERS = ['HINSTANCE', 'HWND', 'None', 'c_void_p', 'c_float', 'c_uint8', 'c_cuint',
+    'c_uint64', 'c_int', 'c_uint', 'c_size_t', 'c_char', 'c_char_p', 'xcb_connection_t', 'xcb_window_t', 'xcb_visualid_t',
+    'MirConnection', 'MirSurface', 'wl_display', 'wl_surface', 'Display', 'Window', 'VisualID', 'ANativeWindow']
 
 # Global properties used through the exportation
 SHARED = {
@@ -52,9 +54,8 @@ TYPES_MAP = {
 
 IMPORTS_TEMPLATE = """
 # -*- coding: utf-8 -*-
-from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, Structure, POINTER)
+from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, Structure, Union, POINTER)
 from platform import system
-import sys
 """
 
 INITIALIZATION_TEMPLATE = """
@@ -69,11 +70,29 @@ elif system_name == 'Linux':
 `FUNCTYPE = CFUNCTYPE
 `vk = cdll.LoadLibrary('libvulkan.so.1')
 ?
+# System types
+HINSTANCE = c_void_p
+HWND = c_void_p
+xcb_connection_t = c_void_p
+xcb_window_t = c_uint
+xcb_visualid_t = c_uint
+MirConnection = c_void_p
+MirSurface = c_void_p
+wl_display = c_void_p
+wl_surface = c_void_p
+Display = c_void_p
+Window = c_uint
+VisualID = c_uint
+ANativeWindow = c_void_p
+?
 def MAKE_VERSION(major, minor, patch):
 `return (major<<22) | (minor<<12) | patch
 ?
 def define_structure(name, *args):
 `return type(name, (Structure,), {'_fields_': args})
+?
+def define_union(name, *args):
+`return type(name, (Union,), {'_fields_': args})
 ?
 def load_functions(vk_object, functions_list, loader):
 `functions = []
@@ -83,6 +102,9 @@ def load_functions(vk_object, functions_list, loader):
 ``if fn_ptr is not None:
 ```fn = (FUNCTYPE(return_type, *args))(fn_ptr)
 ```functions.append((py_name, fn))
+``elif __debug__ == True:
+```print('Function {} could not be loaded. (this message is displayed because __debug__ is set to True)'.format(py_name))
+`return functions
 ?
 API_VERSION_1_0 = MAKE_VERSION(1,0,0)
 """
@@ -105,7 +127,12 @@ ENUM_TEMPLATE = """
 
 STRUCTURE_ARGS_TEMPLATE = """`('{MEMBER_NAME}', {MEMBER_TYPE}),$"""
 STRUCTURE_TEMPLATE = """
-{STRUCT_NAME} = define_structure('{STRUCT_NAME}',${STRUCTURE_ARGS})$
+{NAME} = define_structure('{NAME}',${ARGS})$
+"""
+
+UNION_ARGS_TEMPLATE = """`('{MEMBER_NAME}', {MEMBER_TYPE}),$"""
+UNION_TEMPLATE = """
+{NAME} = define_union('{NAME}',${ARGS})$
 """
 
 FUNCTIONS_PROTOTYPE_ARGS_TEMPLATE = """{PROTOTYPE_ARG_TYPE}, """
@@ -115,18 +142,17 @@ COMMAND_ARGS_TEMPLATE = """{COMMAND_ARG_TYPE}, """
 COMMAND_DEFINITION_TEMPLATE = """`(b'{COMMAND_NAME}', {COMMAND_RETURN}, {COMMAND_ARGS}),$"""
 COMMAND_TEMPLATE = """{COMMAND_FAMILY_NAME}Functions = (${COMMAND_DEFINITIONS})$$"""
 
+GET_INSTANCE_PROC_ADDR_TEMPLATE = """
+{COMMAND_NAME} = vk.vk{COMMAND_NAME}
+{COMMAND_NAME}.restype = {COMMAND_RETURN}
+{COMMAND_NAME}.argtypes = ({COMMAND_ARGS})
+"""
 POST_INITIALIZATION_TEMPLATE = """
-GetInstanceProcAddr = vk.vkGetInstanceProcAddr
-GetInstanceProcAddr.restype = c_void_p
-GetInstanceProcAddr.argtypes = (Instance, c_char_p)
-
-print(local())
-
 # Load the loader functions in the module namespace
-for function_name, return_type, *args in LoaderFunctions:
-`if function_name == 'vkGetInstanceProcAddr':
-``continue
-
+loc = locals()
+for name, fnptr in load_functions(Instance(0), LoaderFunctions, GetInstanceProcAddr):
+`loc[name] = fnptr
+del loc
 """
 
 ### Templates END ###
@@ -147,6 +173,7 @@ def to_snake_case(name):
     name = re.sub('[^A-Z]([A-Z])[^A-Z]|[^A-Z]([A-Z])', lower, name)
         
     return name
+
 def lstrip_t(template):
     return "".join( (ln.lstrip() for ln in template.splitlines(True)) )
 
@@ -172,7 +199,7 @@ def pythonize_field_name(_name):
     return name
 
 def remove_prefix(name):
-    prefixes = ('Vk', 'VK_', 'PFN_vk')
+    prefixes = ('Vk', 'VK_', 'PFN_vk', 'vk')
     for prefix in prefixes:
         if name.startswith(prefix):
             return name[len(prefix)::]
@@ -189,6 +216,7 @@ def second(iterator):
     it = iter(iterator)
     next(it)
     return next(it)
+
 def map_ctypes(type_item):
     if isinstance(type_item, str):
         type_name = type_item
@@ -208,8 +236,10 @@ def map_ctypes(type_item):
 
 def filter_types(filter):
     return (t for t in SHARED['root'].find('types') if t.get('category') == filter)
+
 def format_array(_type, length):
     return ARRAY_TEMPLATE.format(ARRAY_TYPE=_type, ARRAY_LENGTH=length)
+    
 def format_pointer(_type):
     if _type == 'None':
         return TYPES_MAP['void*']
@@ -361,7 +391,7 @@ def parse_structure_member(struct_mem):
 
     return (mem_name, mem_type)
 
-def parse_struct(struct, o):
+def parse_struct_or_enum(struct, o, is_struct=True):
     struct_name = remove_prefix(struct.get('name'))
     if struct_name in DEFINED_IDENTIFIERS:
         return
@@ -370,30 +400,37 @@ def parse_struct(struct, o):
 
     members = list(struct.iter('member'))
 
+    MEMBER_TEMPLATE = STRUCTURE_ARGS_TEMPLATE if is_struct else UNION_ARGS_TEMPLATE
+    MAIN_TEMPLATE = STRUCTURE_TEMPLATE if is_struct else UNION_TEMPLATE
+
     # Check if there is a dependency that must be parsed first
     struct_types = ( map_ctypes(mem.find('type').text) for mem in members)
     for t in struct_types:
         if t not in DEFINED_IDENTIFIERS:
             struct = first( (s for s in filter_types('struct') if s.get('name') == 'Vk'+t) )
-            if struct is None:
+            union = first( (s for s in filter_types('union') if s.get('name') == 'Vk'+t) )
+            if struct is None and union is None:
                 print("{} was not found".format(t))
             else:
-                parse_struct(struct, o)
+                parse_struct_or_enum(struct or union , o, union is None)
 
     struct_mems = ( parse_structure_member(struct_mem) for struct_mem in members )
-    struct_mems = (STRUCTURE_ARGS_TEMPLATE.format(MEMBER_NAME=n, MEMBER_TYPE=t) for n, t in struct_mems)
+    struct_mems = (MEMBER_TEMPLATE.format(MEMBER_NAME=n, MEMBER_TYPE=t) for n, t in struct_mems)
     struct_mems = ''.join(struct_mems)
 
-    o.write( STRUCTURE_TEMPLATE.format(STRUCT_NAME=struct_name, STRUCTURE_ARGS=struct_mems) )
+    o.write( MAIN_TEMPLATE.format(NAME=struct_name, ARGS=struct_mems) )
 
-def parse_structures():
+def parse_structures_and_unions():
     s = SHARED
     o = s['output']
     
     o.write('\n# STRUCTURES\n\n')
 
     for struct in filter_types('struct'):
-        parse_struct(struct, o)
+        parse_struct_or_enum(struct, o)
+
+    for union in filter_types('union'):
+        parse_struct_or_enum(union, o)
 
 def parse_command_argument_type(argtype):
     cmd_arg_type = map_ctypes(argtype.text)
@@ -407,6 +444,8 @@ def parse_commands():
 
     o.write('\n# FUNCTIONS \n\n')
 
+    get_instance_proc_addr_info = None
+
     commands_groups = {}
     commands = s['root'].find('commands')
     for command in commands:
@@ -417,14 +456,19 @@ def parse_commands():
         _command_params = [ p.find('type') for p in command.iter('param') if p.find('type') is not None]
         command_params = (parse_command_argument_type(p) for p in _command_params)
         command_params = ''.join(command_params)
+
+        # vkGetInstanceProcAddr has its own template (being the vulkan entry point)
+        if command_name == 'vkGetInstanceProcAddr':
+            get_instance_proc_addr_info = (remove_prefix(command_name), command_type, command_params)
+            continue
         
-        # Commands are regrouped in "families". The family name being the first argument of the command
+        # Other commands are regrouped in "families". The family name being the first argument of the command
         # Functions that do not belong to a family (ex: VkCreateInstance) are assigned to the 'loader' family
-        cmd = COMMAND_DEFINITION_TEMPLATE.format(COMMAND_NAME=command_name, COMMAND_RETURN=command_type, COMMAND_ARGS=command_params)
         group_key = map_ctypes(_command_params[0].text)
-        if not group_key in HANDLE_NAMES or command_name == 'vkGetInstanceProcAddr':
+        cmd = COMMAND_DEFINITION_TEMPLATE.format(COMMAND_NAME=command_name, COMMAND_RETURN=command_type, COMMAND_ARGS=command_params)
+        if not group_key in HANDLE_NAMES:
             group_key = "Loader"
-        
+
         if group_key not in commands_groups.keys():
             commands_groups[group_key] = [cmd]
         else:
@@ -433,10 +477,14 @@ def parse_commands():
     for cmd_family, cmds in commands_groups.items():
         cmds = ''.join(cmds)
         o.write(COMMAND_TEMPLATE.format(COMMAND_FAMILY_NAME=cmd_family, COMMAND_DEFINITIONS=cmds))
+
+    name, _type, params = get_instance_proc_addr_info
+    o.write(GET_INSTANCE_PROC_ADDR_TEMPLATE.format(COMMAND_NAME=name, COMMAND_RETURN=_type, COMMAND_ARGS=params))
         
 
 def add_post_initialization():
     SHARED['output'].write("\n\n"+POST_INITIALIZATION_TEMPLATE+"\n")
+
 def end_generation():
     s = SHARED
     s['output'].close()
@@ -453,7 +501,7 @@ def export():
     parse_flags()
     parse_enums()
     parse_funcpointers()
-    parse_structures()
+    parse_structures_and_unions()
     parse_commands()
     add_post_initialization()
     end_generation()
