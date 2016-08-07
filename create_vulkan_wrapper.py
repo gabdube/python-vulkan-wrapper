@@ -147,6 +147,12 @@ GET_INSTANCE_PROC_ADDR_TEMPLATE = """
 {COMMAND_NAME}.restype = {COMMAND_RETURN}
 {COMMAND_NAME}.argtypes = ({COMMAND_ARGS})
 """
+
+EXTENSION_TEMPLATE = """
+#{EXTENSION_NAME}
+{EXTENSION_ENUMS}
+"""
+
 POST_INITIALIZATION_TEMPLATE = """
 # Load the loader functions in the module namespace
 loc = locals()
@@ -244,6 +250,13 @@ def format_pointer(_type):
     if _type == 'None':
         return TYPES_MAP['void*']
     return POINTER_TEMPLATE.format(POINTER_TYPE=_type)
+def parse_offset(elem, base_offset):
+    offset = int(elem.get('offset'))
+    offset = offset + base_offset
+    if elem.get('dir') == '-':
+        offset = -offset
+
+    return str(offset)
 
 ### Utility functions STOP  ###
 
@@ -328,7 +341,7 @@ def parse_enums():
     s = SHARED
     o = s['output']
 
-    value_or_bitpos = lambda x: x.get('value') or x.get('bitpos')
+    value_or_bitpos = lambda x: x.get('value') or "1<<"+x.get('bitpos')
 
     o.write('# ENUMS\n\n')
 
@@ -481,6 +494,30 @@ def parse_commands():
     name, _type, params = get_instance_proc_addr_info
     o.write(GET_INSTANCE_PROC_ADDR_TEMPLATE.format(COMMAND_NAME=name, COMMAND_RETURN=_type, COMMAND_ARGS=params))
         
+def parse_extensions():
+    s = SHARED
+    o = s['output']
+    parse_bitpos = lambda x: "1<<"+x if x is not None else x
+    value_or_offset_or_bitpos = lambda x: x.get('value') or parse_bitpos(x.get('bitpos')) or parse_offset(x, offset)
+
+    o.write('\n# EXTENSIONS \n\n')
+
+    # Parse extensions values that could not be parsed in the other functions
+    extensions = s['root'].find('extensions')
+    for extension in extensions.iter('extension'):
+        require = extension.find('require')
+        if require.find('enum').get('value') == '0':
+            # Skip placeholders extensions
+            continue
+
+        extension_name = extension.get('name')
+        offset = 1000000000 + ((int(extension.get('number'))-1)*1000)
+
+        enum_mems = ( (remove_prefix(e.get('name')), remove_prefix(value_or_offset_or_bitpos(e))) for e in require.iter('enum'))
+        enum_mems = (ENUM_LINE_TEMPLATE.format(ENUM_NAME=n, ENUM_VALUE=v) for n, v in enum_mems)
+        enum_mems = ''.join(enum_mems)
+
+        o.write(EXTENSION_TEMPLATE.format(EXTENSION_NAME=extension_name, EXTENSION_ENUMS=enum_mems))
 
 def add_post_initialization():
     SHARED['output'].write("\n\n"+POST_INITIALIZATION_TEMPLATE+"\n")
@@ -503,6 +540,7 @@ def export():
     parse_funcpointers()
     parse_structures_and_unions()
     parse_commands()
+    parse_extensions()
     add_post_initialization()
     end_generation()
 
