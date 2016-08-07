@@ -526,6 +526,7 @@ def parse_commands():
         if command_name == 'vkGetInstanceProcAddr':
             get_instance_proc_addr_info = (remove_prefix(command_name), command_type, command_params)
             continue
+
         
         # Other commands are regrouped in "families". The family name being the first argument of the command
         # Functions that do not belong to a family (ex: VkCreateInstance) are assigned to the 'loader' family
@@ -533,6 +534,9 @@ def parse_commands():
         cmd = COMMAND_DEFINITION_TEMPLATE.format(COMMAND_NAME=command_name, COMMAND_RETURN=command_type, COMMAND_ARGS=command_params)
         if not group_key in HANDLE_NAMES:
             group_key = "Loader"
+        elif command_name == 'vkGetDeviceProcAddr':
+            # Exception
+            group_key = "Instance"
 
         if group_key not in commands_groups.keys():
             commands_groups[group_key] = [cmd]
