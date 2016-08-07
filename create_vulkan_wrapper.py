@@ -98,7 +98,7 @@ TYPES_MAP = {
 
 IMPORTS_TEMPLATE = """
 # -*- coding: utf-8 -*-
-from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, Structure, Union, POINTER)
+from ctypes import (c_void_p, c_float, c_uint8, c_uint, c_uint64, c_int, c_size_t, c_char, c_char_p, cast, Structure, Union, POINTER)
 from platform import system
 """
 
@@ -143,8 +143,9 @@ def load_functions(vk_object, functions_list, loader):
 `for name, return_type, *args in functions_list:
 ``py_name = name.decode()[2::]
 ``fn_ptr = loader(vk_object, name)
-``if fn_ptr is not None:
-```fn = (FUNCTYPE(return_type, *args))(fn_ptr)
+``fn_ptr = cast(fn_ptr, c_void_p)
+``if fn_ptr:
+```fn = (FUNCTYPE(return_type, *args))(fn_ptr.value)
 ```functions.append((py_name, fn))
 ``elif __debug__ == True:
 ```print('Function {} could not be loaded. (__debug__ == True)'.format(py_name))
@@ -243,8 +244,9 @@ def pythonize_field_name(_name):
     name = to_snake_case(_name)
 
     # Remove useless pointer identifier in field name
-    if name.startswith('p_'):
-        name = name[2::]
+    for p in ('p_', 'pp_', 'pfn_'):
+        if name.startswith(p):
+            name = name[len(p)::]
 
     return name
 
@@ -297,6 +299,7 @@ def format_pointer(_type):
         return TYPES_MAP['char*']
 
     return POINTER_TEMPLATE.format(POINTER_TYPE=_type)
+
 def parse_offset(elem, base_offset):
     offset = int(elem.get('offset'))
     offset = offset + base_offset
@@ -429,14 +432,16 @@ def parse_funcpointers():
     o.write('\n')
 
 def parse_structure_member(struct_mem):
-    type_node = first(struct_mem.iter('type'))
-    name_node = first(struct_mem.iter('name'))
+    type_node = struct_mem.find('type')
+    name_node = struct_mem.find('name')
     mem_type = map_ctypes(type_node.text)
     mem_name = pythonize_field_name(name_node.text)
 
     # Check if type is a pointer
-    if type_node.tail is not None and type_node.tail[0] == '*':
-        mem_type = format_pointer(mem_type)
+    if type_node.tail is not None:
+        ptr_level = len([c for c in type_node.tail if c=="*"])
+        for i in range(ptr_level):
+            mem_type = format_pointer(mem_type)
 
     # Check if type is an array
     if struct_mem.find('enum') is not None or ( (name_node.tail or ' ')[0] == '[' ):
