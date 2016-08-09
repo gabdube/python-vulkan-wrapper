@@ -56,6 +56,9 @@ DEFINED_IDENTIFIERS = ['HINSTANCE', 'HWND', 'None', 'c_void_p', 'c_float', 'c_ui
     'c_uint64', 'c_int', 'c_uint', 'c_size_t', 'c_char', 'c_char_p', 'xcb_connection_t', 'xcb_window_t', 'xcb_visualid_t',
     'MirConnection', 'MirSurface', 'wl_display', 'wl_surface', 'Display', 'Window', 'VisualID', 'ANativeWindow']
 
+# List of types defined as pointer in vk.xml but defined as simple type in vk.py
+NOT_POINTERS = ('xcb_connection_t', 'MirConnection', 'ANativeWindow', 'wl_display', 'wl_surface', 'MirSurface', 'Display')
+
 # Global properties used through the exportation
 SHARED = {
     # 'file' or 'web'
@@ -298,7 +301,9 @@ def format_array(_type, length):
     return ARRAY_TEMPLATE.format(ARRAY_TYPE=_type, ARRAY_LENGTH=length)
     
 def format_pointer(_type):
-    if _type == 'None':
+    if _type in NOT_POINTERS:
+        return _type
+    elif _type == 'None':
         return TYPES_MAP['void*']
     elif _type == 'c_char':
         return TYPES_MAP['char*']
