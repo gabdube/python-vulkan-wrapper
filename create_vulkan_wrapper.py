@@ -251,10 +251,15 @@ def pythonize_field_name(_name):
     return name
 
 def remove_prefix(name):
-    prefixes = ('Vk', 'VK_', 'PFN_vk', 'vk')
+    prefixes = ('Vk', 'VK_', 'vk')
     for prefix in prefixes:
         if name.startswith(prefix):
             return name[len(prefix)::]
+    
+    replace_prefixes = ('PFN_vk', to_snake_case('PFN_vk'))
+    for prefix in replace_prefixes:
+        if name.startswith(prefix):
+            return name.replace('PFN_vk', 'fn_')
 
     return name
 
