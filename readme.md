@@ -24,28 +24,50 @@ python create_vulkan_wrapper.py -o foo.py
 ## Example
 
 #### Access ENUMS and Structures
-All vulkan types and enums are accessible through the generated script (ex: `vk.SubmitInfo` or `vk.SHADER_STAGE_VERTEX_BIT`).  
-**Because python has modules, all types, constants and function exported not longer have their prefix (`Vk`, `VK_`, etc) furthermore structure members names, are converted to snake_case ex:( `waitSemaphoreCount` becomes `wait_semaphore_count`)**
+
+* All vulkan types and enums are accessible through the generated script (ex: `vk.SubmitInfo` or `vk.SHADER_STAGE_VERTEX_BIT`)  
+* Exported values do not have prefixes  
+* Exported structure member names use snake case instead of camelcase (`my_arg` instead of `myArg`)
+* Exported structure member names pointer prefixes (`p_`, `pp_`) are removed
 
 #### Loading functions
 
-By default, these functions are directly accessible from the wrapper: `GetInstanceProcAddr`, `CreateInstance`, `EnumerateInstanceLayerProperties` and `EnumerateInstanceExtensionProperties`. Other functions must be loaded dynamically.
+By default, these functions are directly accessible from the wrapper: 
 
-The wrapper export the vulkan function **definitions** grouped in families. Families are groups of functions that share the same first argument type.  
+* `GetInstanceProcAddr`
+* `CreateInstance`
+* `EnumerateInstanceLayerProperties`
+* `EnumerateInstanceExtensionProperties`
+
+Other functions must be loaded dynamically.
+The wrapper export the vulkan function **definitions** grouped in families.  
+Families are groups of functions that share the same first argument type.  
+
+```
+LoaderFunctions (automatically loaded in the wrapper)
+InstanceFunctions
+PhysicalDeviceFunctions
+DeviceFunctions
+CommandBufferFunctions
+QueueFunctions
+```
+
+
 In order to load a function family in the code, the `load_functions` function can be used.  
-
-`load_functions` is a light wrapper around `GetInstanceProcAddr` and `GetDeviceProcAddr`. 
+It is a light wrapper around `GetInstanceProcAddr` and `GetDeviceProcAddr`. 
 
 ```python
 def load_functions(vk_object, functions_list, loader):
 ```
 
-* vk_object : This is either the **Instance** or the **Device** used to load the functions (the first argument of loader)
-* functions_list : List of families to wrap (see **List of families** under)
-* loader : Function to call. This is either `GetInstanceProcAddr` or `GetDeviceProcAddr`
+* **vk_object** : This is either the **Instance** or the **Device** used to load the functions (the first argument of loader)
+* **functions_list** : List of families to wrap (see **List of families** under)
+* **loader** : Function to call. This is either `GetInstanceProcAddr` or `GetDeviceProcAddr`
 
-This function returns a list of `(FunctionName, FunctionPtr)`. **FunctionName** being the name of the function without the prefix and
-**FunctionPtr** being a ctypes `CFUNCTYPE` wrapper around the function.
+This function returns a list of `(FunctionName, FunctionPtr)`. 
+
+* **FunctionName** being the name of the function without the prefix and
+* **FunctionPtr** being a ctypes `CFUNCTYPE` wrapper around the function.
 
 Here is some pseudocode that load all the vulkan commands in two different python objects:  
 ```python
@@ -84,17 +106,6 @@ class MyDevice(object):
 
 instance = MyInstance()
 device = MyDevice(instance)
-```
-
-
-List of families:  
-```
-LoaderFunctions (automatically loaded in the wrapper)
-InstanceFunctions
-PhysicalDeviceFunctions
-DeviceFunctions
-CommandBufferFunctions
-QueueFunctions
 ```
 
 
