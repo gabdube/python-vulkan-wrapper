@@ -17,6 +17,9 @@ elif system_name == 'Linux':
 # System types
 HINSTANCE = c_void_p
 HWND = c_void_p
+HANDLE = c_void_p
+DWORD = c_uint
+BOOL = c_uint
 xcb_connection_t = c_void_p
 xcb_window_t = c_uint
 xcb_visualid_t = c_uint
@@ -28,6 +31,8 @@ Display = c_void_p
 Window = c_uint
 VisualID = c_uint
 ANativeWindow = c_void_p
+class SECURITY_ATTRIBUTES(Structure):
+    _fields_ = [('nLength', DWORD), ('lpSecurityDescriptor', c_void_p), ('bInheritHandle', BOOL)]
 
 def MAKE_VERSION(major, minor, patch):
     return (major<<22) | (minor<<12) | patch
@@ -169,6 +174,8 @@ Win32SurfaceCreateFlagsKHR = c_uint
 XlibSurfaceCreateFlagsKHR = c_uint
 XcbSurfaceCreateFlagsKHR = c_uint
 DebugReportFlagsEXT = c_uint
+ExternalMemoryHandleTypeFlagsNV = c_uint
+ExternalMemoryFeatureFlagsNV = c_uint
 
 # ENUMS
 
@@ -960,6 +967,17 @@ DEBUG_REPORT_ERROR_CALLBACK_REF_EXT = 1
 RasterizationOrderAMD = c_uint
 RASTERIZATION_ORDER_STRICT_AMD = 0
 RASTERIZATION_ORDER_RELAXED_AMD = 1
+
+ExternalMemoryHandleTypeFlagBitsNV = c_uint
+EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_NV = 0x00000001
+EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_NV = 0x00000002
+EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_BIT_NV = 0x00000004
+EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_KMT_BIT_NV = 0x00000008
+
+ExternalMemoryFeatureFlagBitsNV = c_uint
+EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_NV = 0x00000001
+EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_NV = 0x00000002
+EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_NV = 0x00000004
 
 
 # FUNC POINTERS
@@ -2225,6 +2243,12 @@ DebugReportCallbackCreateInfoEXT = define_structure('DebugReportCallbackCreateIn
     ('user_data', c_void_p),
 )
 
+DebugReportLayerFlagsEXT = define_structure('DebugReportLayerFlagsEXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('enabled_validation_flags', c_uint64),
+)
+
 PipelineRasterizationStateRasterizationOrderAMD = define_structure('PipelineRasterizationStateRasterizationOrderAMD',
     ('s_type', StructureType),
     ('next', c_void_p),
@@ -2275,8 +2299,70 @@ DedicatedAllocationMemoryAllocateInfoNV = define_structure('DedicatedAllocationM
     ('buffer', Buffer),
 )
 
+ExternalImageFormatPropertiesNV = define_structure('ExternalImageFormatPropertiesNV',
+    ('image_format_properties', ImageFormatProperties),
+    ('external_memory_features', ExternalMemoryFeatureFlagsNV),
+    ('export_from_imported_handle_types', ExternalMemoryHandleTypeFlagsNV),
+    ('compatible_handle_types', ExternalMemoryHandleTypeFlagsNV),
+)
+
+ExternalMemoryImageCreateInfoNV = define_structure('ExternalMemoryImageCreateInfoNV',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('handle_types', ExternalMemoryHandleTypeFlagsNV),
+)
+
+ExportMemoryAllocateInfoNV = define_structure('ExportMemoryAllocateInfoNV',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('handle_types', ExternalMemoryHandleTypeFlagsNV),
+)
+
+ImportMemoryWin32HandleInfoNV = define_structure('ImportMemoryWin32HandleInfoNV',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('handle_type', ExternalMemoryHandleTypeFlagsNV),
+    ('handle', HANDLE),
+)
+
+ExportMemoryWin32HandleInfoNV = define_structure('ExportMemoryWin32HandleInfoNV',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('attributes', POINTER(SECURITY_ATTRIBUTES)),
+    ('dw_access', DWORD),
+)
+
+Win32KeyedMutexAcquireReleaseInfoNV = define_structure('Win32KeyedMutexAcquireReleaseInfoNV',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('acquire_count', c_uint),
+    ('acquire_syncs', POINTER(DeviceMemory)),
+    ('acquire_keys', POINTER(c_uint64)),
+    ('acquire_timeout_milliseconds', POINTER(c_uint)),
+    ('release_count', c_uint),
+    ('release_syncs', POINTER(DeviceMemory)),
+    ('release_keys', POINTER(c_uint64)),
+)
+
 
 # FUNCTIONS 
+
+InstanceFunctions = (
+    (b'vkDestroyInstance', None, Instance, POINTER(AllocationCallbacks), ),
+    (b'vkEnumeratePhysicalDevices', Result, Instance, POINTER(c_uint), POINTER(PhysicalDevice), ),
+    (b'vkGetDeviceProcAddr', fn_VoidFunction, Device, c_char_p, ),
+    (b'vkCreateAndroidSurfaceKHR', Result, Instance, POINTER(AndroidSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateDisplayPlaneSurfaceKHR', Result, Instance, POINTER(DisplaySurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateMirSurfaceKHR', Result, Instance, POINTER(MirSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkDestroySurfaceKHR', None, Instance, SurfaceKHR, POINTER(AllocationCallbacks), ),
+    (b'vkCreateWaylandSurfaceKHR', Result, Instance, POINTER(WaylandSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateWin32SurfaceKHR', Result, Instance, POINTER(Win32SurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateXlibSurfaceKHR', Result, Instance, POINTER(XlibSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateXcbSurfaceKHR', Result, Instance, POINTER(XcbSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateDebugReportCallbackEXT', Result, Instance, POINTER(DebugReportCallbackCreateInfoEXT), POINTER(AllocationCallbacks), POINTER(DebugReportCallbackEXT), ),
+    (b'vkDestroyDebugReportCallbackEXT', None, Instance, DebugReportCallbackEXT, POINTER(AllocationCallbacks), ),
+    (b'vkDebugReportMessageEXT', None, Instance, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int, c_char_p, c_char_p, ),
+)
 
 DeviceFunctions = (
     (b'vkDestroyDevice', None, Device, POINTER(AllocationCallbacks), ),
@@ -2356,47 +2442,7 @@ DeviceFunctions = (
     (b'vkAcquireNextImageKHR', Result, Device, SwapchainKHR, c_uint64, Semaphore, Fence, POINTER(c_uint), ),
     (b'vkDebugMarkerSetObjectNameEXT', Result, Device, POINTER(DebugMarkerObjectNameInfoEXT), ),
     (b'vkDebugMarkerSetObjectTagEXT', Result, Device, POINTER(DebugMarkerObjectTagInfoEXT), ),
-)
-
-LoaderFunctions = (
-    (b'vkCreateInstance', Result, POINTER(InstanceCreateInfo), POINTER(AllocationCallbacks), POINTER(Instance), ),
-    (b'vkEnumerateInstanceLayerProperties', Result, POINTER(c_uint), POINTER(LayerProperties), ),
-    (b'vkEnumerateInstanceExtensionProperties', Result, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
-)
-
-QueueFunctions = (
-    (b'vkQueueSubmit', Result, Queue, c_uint, POINTER(SubmitInfo), Fence, ),
-    (b'vkQueueWaitIdle', Result, Queue, ),
-    (b'vkQueueBindSparse', Result, Queue, c_uint, POINTER(BindSparseInfo), Fence, ),
-    (b'vkQueuePresentKHR', Result, Queue, POINTER(PresentInfoKHR), ),
-)
-
-PhysicalDeviceFunctions = (
-    (b'vkGetPhysicalDeviceProperties', None, PhysicalDevice, POINTER(PhysicalDeviceProperties), ),
-    (b'vkGetPhysicalDeviceQueueFamilyProperties', None, PhysicalDevice, POINTER(c_uint), POINTER(QueueFamilyProperties), ),
-    (b'vkGetPhysicalDeviceMemoryProperties', None, PhysicalDevice, POINTER(PhysicalDeviceMemoryProperties), ),
-    (b'vkGetPhysicalDeviceFeatures', None, PhysicalDevice, POINTER(PhysicalDeviceFeatures), ),
-    (b'vkGetPhysicalDeviceFormatProperties', None, PhysicalDevice, Format, POINTER(FormatProperties), ),
-    (b'vkGetPhysicalDeviceImageFormatProperties', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, POINTER(ImageFormatProperties), ),
-    (b'vkCreateDevice', Result, PhysicalDevice, POINTER(DeviceCreateInfo), POINTER(AllocationCallbacks), POINTER(Device), ),
-    (b'vkEnumerateDeviceLayerProperties', Result, PhysicalDevice, POINTER(c_uint), POINTER(LayerProperties), ),
-    (b'vkEnumerateDeviceExtensionProperties', Result, PhysicalDevice, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
-    (b'vkGetPhysicalDeviceSparseImageFormatProperties', None, PhysicalDevice, Format, ImageType, SampleCountFlagBits, ImageUsageFlags, ImageTiling, POINTER(c_uint), POINTER(SparseImageFormatProperties), ),
-    (b'vkGetPhysicalDeviceDisplayPropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPropertiesKHR), ),
-    (b'vkGetPhysicalDeviceDisplayPlanePropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPlanePropertiesKHR), ),
-    (b'vkGetDisplayPlaneSupportedDisplaysKHR', Result, PhysicalDevice, c_uint, POINTER(c_uint), POINTER(DisplayKHR), ),
-    (b'vkGetDisplayModePropertiesKHR', Result, PhysicalDevice, DisplayKHR, POINTER(c_uint), POINTER(DisplayModePropertiesKHR), ),
-    (b'vkCreateDisplayModeKHR', Result, PhysicalDevice, DisplayKHR, POINTER(DisplayModeCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(DisplayModeKHR), ),
-    (b'vkGetDisplayPlaneCapabilitiesKHR', Result, PhysicalDevice, DisplayModeKHR, c_uint, POINTER(DisplayPlaneCapabilitiesKHR), ),
-    (b'vkGetPhysicalDeviceMirPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, MirConnection, ),
-    (b'vkGetPhysicalDeviceSurfaceSupportKHR', Result, PhysicalDevice, c_uint, SurfaceKHR, POINTER(Bool32), ),
-    (b'vkGetPhysicalDeviceSurfaceCapabilitiesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(SurfaceCapabilitiesKHR), ),
-    (b'vkGetPhysicalDeviceSurfaceFormatsKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(SurfaceFormatKHR), ),
-    (b'vkGetPhysicalDeviceSurfacePresentModesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(PresentModeKHR), ),
-    (b'vkGetPhysicalDeviceWaylandPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, wl_display, ),
-    (b'vkGetPhysicalDeviceWin32PresentationSupportKHR', Bool32, PhysicalDevice, c_uint, ),
-    (b'vkGetPhysicalDeviceXlibPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, Display, VisualID, ),
-    (b'vkGetPhysicalDeviceXcbPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, xcb_connection_t, xcb_visualid_t, ),
+    (b'vkGetMemoryWin32HandleNV', Result, Device, DeviceMemory, ExternalMemoryHandleTypeFlagsNV, POINTER(HANDLE), ),
 )
 
 CommandBufferFunctions = (
@@ -2450,23 +2496,50 @@ CommandBufferFunctions = (
     (b'vkCmdDebugMarkerBeginEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
     (b'vkCmdDebugMarkerEndEXT', None, CommandBuffer, ),
     (b'vkCmdDebugMarkerInsertEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
+    (b'vkCmdDrawIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
+    (b'vkCmdDrawIndexedIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
 )
 
-InstanceFunctions = (
-    (b'vkDestroyInstance', None, Instance, POINTER(AllocationCallbacks), ),
-    (b'vkEnumeratePhysicalDevices', Result, Instance, POINTER(c_uint), POINTER(PhysicalDevice), ),
-    (b'vkGetDeviceProcAddr', fn_VoidFunction, Device, c_char_p, ),
-    (b'vkCreateAndroidSurfaceKHR', Result, Instance, POINTER(AndroidSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateDisplayPlaneSurfaceKHR', Result, Instance, POINTER(DisplaySurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateMirSurfaceKHR', Result, Instance, POINTER(MirSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkDestroySurfaceKHR', None, Instance, SurfaceKHR, POINTER(AllocationCallbacks), ),
-    (b'vkCreateWaylandSurfaceKHR', Result, Instance, POINTER(WaylandSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateWin32SurfaceKHR', Result, Instance, POINTER(Win32SurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateXlibSurfaceKHR', Result, Instance, POINTER(XlibSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateXcbSurfaceKHR', Result, Instance, POINTER(XcbSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateDebugReportCallbackEXT', Result, Instance, POINTER(DebugReportCallbackCreateInfoEXT), POINTER(AllocationCallbacks), POINTER(DebugReportCallbackEXT), ),
-    (b'vkDestroyDebugReportCallbackEXT', None, Instance, DebugReportCallbackEXT, POINTER(AllocationCallbacks), ),
-    (b'vkDebugReportMessageEXT', None, Instance, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int, c_char_p, c_char_p, ),
+QueueFunctions = (
+    (b'vkQueueSubmit', Result, Queue, c_uint, POINTER(SubmitInfo), Fence, ),
+    (b'vkQueueWaitIdle', Result, Queue, ),
+    (b'vkQueueBindSparse', Result, Queue, c_uint, POINTER(BindSparseInfo), Fence, ),
+    (b'vkQueuePresentKHR', Result, Queue, POINTER(PresentInfoKHR), ),
+)
+
+PhysicalDeviceFunctions = (
+    (b'vkGetPhysicalDeviceProperties', None, PhysicalDevice, POINTER(PhysicalDeviceProperties), ),
+    (b'vkGetPhysicalDeviceQueueFamilyProperties', None, PhysicalDevice, POINTER(c_uint), POINTER(QueueFamilyProperties), ),
+    (b'vkGetPhysicalDeviceMemoryProperties', None, PhysicalDevice, POINTER(PhysicalDeviceMemoryProperties), ),
+    (b'vkGetPhysicalDeviceFeatures', None, PhysicalDevice, POINTER(PhysicalDeviceFeatures), ),
+    (b'vkGetPhysicalDeviceFormatProperties', None, PhysicalDevice, Format, POINTER(FormatProperties), ),
+    (b'vkGetPhysicalDeviceImageFormatProperties', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, POINTER(ImageFormatProperties), ),
+    (b'vkCreateDevice', Result, PhysicalDevice, POINTER(DeviceCreateInfo), POINTER(AllocationCallbacks), POINTER(Device), ),
+    (b'vkEnumerateDeviceLayerProperties', Result, PhysicalDevice, POINTER(c_uint), POINTER(LayerProperties), ),
+    (b'vkEnumerateDeviceExtensionProperties', Result, PhysicalDevice, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
+    (b'vkGetPhysicalDeviceSparseImageFormatProperties', None, PhysicalDevice, Format, ImageType, SampleCountFlagBits, ImageUsageFlags, ImageTiling, POINTER(c_uint), POINTER(SparseImageFormatProperties), ),
+    (b'vkGetPhysicalDeviceDisplayPropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPropertiesKHR), ),
+    (b'vkGetPhysicalDeviceDisplayPlanePropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPlanePropertiesKHR), ),
+    (b'vkGetDisplayPlaneSupportedDisplaysKHR', Result, PhysicalDevice, c_uint, POINTER(c_uint), POINTER(DisplayKHR), ),
+    (b'vkGetDisplayModePropertiesKHR', Result, PhysicalDevice, DisplayKHR, POINTER(c_uint), POINTER(DisplayModePropertiesKHR), ),
+    (b'vkCreateDisplayModeKHR', Result, PhysicalDevice, DisplayKHR, POINTER(DisplayModeCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(DisplayModeKHR), ),
+    (b'vkGetDisplayPlaneCapabilitiesKHR', Result, PhysicalDevice, DisplayModeKHR, c_uint, POINTER(DisplayPlaneCapabilitiesKHR), ),
+    (b'vkGetPhysicalDeviceMirPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, MirConnection, ),
+    (b'vkGetPhysicalDeviceSurfaceSupportKHR', Result, PhysicalDevice, c_uint, SurfaceKHR, POINTER(Bool32), ),
+    (b'vkGetPhysicalDeviceSurfaceCapabilitiesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(SurfaceCapabilitiesKHR), ),
+    (b'vkGetPhysicalDeviceSurfaceFormatsKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(SurfaceFormatKHR), ),
+    (b'vkGetPhysicalDeviceSurfacePresentModesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(PresentModeKHR), ),
+    (b'vkGetPhysicalDeviceWaylandPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, wl_display, ),
+    (b'vkGetPhysicalDeviceWin32PresentationSupportKHR', Bool32, PhysicalDevice, c_uint, ),
+    (b'vkGetPhysicalDeviceXlibPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, Display, VisualID, ),
+    (b'vkGetPhysicalDeviceXcbPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, xcb_connection_t, xcb_visualid_t, ),
+    (b'vkGetPhysicalDeviceExternalImageFormatPropertiesNV', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, ExternalMemoryHandleTypeFlagsNV, POINTER(ExternalImageFormatPropertiesNV), ),
+)
+
+LoaderFunctions = (
+    (b'vkCreateInstance', Result, POINTER(InstanceCreateInfo), POINTER(AllocationCallbacks), POINTER(Instance), ),
+    (b'vkEnumerateInstanceLayerProperties', Result, POINTER(c_uint), POINTER(LayerProperties), ),
+    (b'vkEnumerateInstanceExtensionProperties', Result, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
 )
 
 GetInstanceProcAddr = vk.vkGetInstanceProcAddr
@@ -2539,10 +2612,11 @@ ANDROID_NATIVE_BUFFER_NUMBER = 11
 ANDROID_NATIVE_BUFFER_NAME = "VK_ANDROID_native_buffer"
 
 #VK_EXT_debug_report
-EXT_DEBUG_REPORT_SPEC_VERSION = 3
+EXT_DEBUG_REPORT_SPEC_VERSION = 4
 EXT_DEBUG_REPORT_EXTENSION_NAME = "VK_EXT_debug_report"
 STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT = 1000011000
 ERROR_VALIDATION_FAILED_EXT = -1000011001
+STRUCTURE_TYPE_DEBUG_REPORT_VALIDATION_FLAGS_EXT = 1000011002
 STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT
 
 #VK_NV_glsl_shader
@@ -2591,6 +2665,43 @@ NV_DEDICATED_ALLOCATION_EXTENSION_NAME = "VK_NV_dedicated_allocation"
 STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV = 1000026000
 STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV = 1000026001
 STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV = 1000026002
+
+#VK_AMD_draw_indirect_count
+AMD_EXTENSION_DRAW_INDIRECT_COUNT_SPEC_VERSION = 1
+AMD_EXTENSION_DRAW_INDIRECT_COUNT_EXTENSION_NAME = "VK_AMD_draw_indirect_count"
+
+#VK_IMG_format_pvrtc
+IMG_FORMAT_PVRTC_SPEC_VERSION = 1
+IMG_FORMAT_PVRTC_EXTENSION_NAME = "VK_IMG_format_pvrtc"
+FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG = 1000054000
+FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG = 1000054001
+FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG = 1000054002
+FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG = 1000054003
+FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG = 1000054004
+FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG = 1000054005
+FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG = 1000054006
+FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG = 1000054007
+
+#VK_NV_external_memory_capabilities
+NV_EXTERNAL_MEMORY_CAPABILITIES_SPEC_VERSION = 1
+NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME = "VK_NV_external_memory_capabilities"
+
+#VK_NV_external_memory
+NV_EXTERNAL_MEMORY_SPEC_VERSION = 1
+NV_EXTERNAL_MEMORY_EXTENSION_NAME = "VK_NV_external_memory"
+STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV = 1000056000
+STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV = 1000056001
+
+#VK_NV_external_memory_win32
+NV_EXTERNAL_MEMORY_WIN32_SPEC_VERSION = 1
+NV_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME = "VK_NV_external_memory_win32"
+STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_NV = 1000057000
+STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV = 1000057001
+
+#VK_NV_win32_keyed_mutex
+NV_WIN32_KEYED_MUTEX_SPEC_VERSION = 1
+NV_WIN32_KEYED_MUTEX_EXTENSION_NAME = "VK_NV_win32_keyed_mutex"
+STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV = 1000058000
 
 
 

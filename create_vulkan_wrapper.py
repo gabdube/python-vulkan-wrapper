@@ -52,7 +52,7 @@ TYPES_SUFFIX = {'U': 'c_uint', 'ULL': 'c_uint64', 'f': 'c_float'}
 HANDLE_NAMES = []
 
 # All defined indentifiers. Filled while parsing the xml
-DEFINED_IDENTIFIERS = ['HINSTANCE', 'HWND', 'None', 'c_void_p', 'c_float', 'c_uint8', 'c_cuint',
+DEFINED_IDENTIFIERS = ['HINSTANCE', 'HWND', 'None', 'c_void_p', 'c_float', 'c_uint8', 'c_cuint', 'HANDLE', 'DWORD', 'SECURITY_ATTRIBUTES',
     'c_uint64', 'c_int', 'c_uint', 'c_size_t', 'c_char', 'c_char_p', 'xcb_connection_t', 'xcb_window_t', 'xcb_visualid_t',
     'MirConnection', 'MirSurface', 'wl_display', 'wl_surface', 'Display', 'Window', 'VisualID', 'ANativeWindow']
 
@@ -120,6 +120,9 @@ elif system_name == 'Linux':
 # System types
 HINSTANCE = c_void_p
 HWND = c_void_p
+HANDLE = c_void_p
+DWORD = c_uint
+BOOL = c_uint
 xcb_connection_t = c_void_p
 xcb_window_t = c_uint
 xcb_visualid_t = c_uint
@@ -131,6 +134,10 @@ Display = c_void_p
 Window = c_uint
 VisualID = c_uint
 ANativeWindow = c_void_p
+
+class SECURITY_ATTRIBUTES(Structure):
+`_fields_ = [('nLength', DWORD), ('lpSecurityDescriptor', c_void_p), ('bInheritHandle', BOOL)]
+
 ?
 def MAKE_VERSION(major, minor, patch):
 `return (major<<22) | (minor<<12) | patch
