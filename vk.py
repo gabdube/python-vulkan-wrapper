@@ -30,7 +30,11 @@ wl_surface = c_void_p
 Display = c_void_p
 Window = c_uint
 VisualID = c_uint
+RROutput = c_uint
 ANativeWindow = c_void_p
+
+repr_fn = lambda self: repr({n: v for n, v in [(n[0], getattr(self, n[0])) for n in self._fields_]})
+
 class SECURITY_ATTRIBUTES(Structure):
     _fields_ = [('nLength', DWORD), ('lpSecurityDescriptor', c_void_p), ('bInheritHandle', BOOL)]
 
@@ -38,10 +42,10 @@ def MAKE_VERSION(major, minor, patch):
     return (major<<22) | (minor<<12) | patch
 
 def define_structure(name, *args):
-    return type(name, (Structure,), {'_fields_': args})
+    return type(name, (Structure,), {'_fields_': args, '__repr__': repr_fn})
 
 def define_union(name, *args):
-    return type(name, (Union,), {'_fields_': args})
+    return type(name, (Union,), {'_fields_': args, '__repr__': repr_fn})
 
 def load_functions(vk_object, functions_list, loader):
     functions = []
@@ -94,6 +98,8 @@ QueryPool = c_uint64
 Framebuffer = c_uint64
 RenderPass = c_uint64
 PipelineCache = c_uint64
+ObjectTableNVX = c_uint64
+IndirectCommandsLayoutNVX = c_uint64
 DisplayKHR = c_uint64
 DisplayModeKHR = c_uint64
 SurfaceKHR = c_uint64
@@ -161,6 +167,8 @@ CullModeFlags = c_uint
 DescriptorPoolCreateFlags = c_uint
 DescriptorPoolResetFlags = c_uint
 DependencyFlags = c_uint
+IndirectCommandsLayoutUsageFlagsNVX = c_uint
+ObjectEntryUsageFlagsNVX = c_uint
 CompositeAlphaFlagsKHR = c_uint
 DisplayPlaneAlphaFlagsKHR = c_uint
 SurfaceTransformFlagsKHR = c_uint
@@ -169,13 +177,16 @@ DisplayModeCreateFlagsKHR = c_uint
 DisplaySurfaceCreateFlagsKHR = c_uint
 AndroidSurfaceCreateFlagsKHR = c_uint
 MirSurfaceCreateFlagsKHR = c_uint
+ViSurfaceCreateFlagsNN = c_uint
 WaylandSurfaceCreateFlagsKHR = c_uint
 Win32SurfaceCreateFlagsKHR = c_uint
 XlibSurfaceCreateFlagsKHR = c_uint
 XcbSurfaceCreateFlagsKHR = c_uint
 DebugReportFlagsEXT = c_uint
+CommandPoolTrimFlagsKHR = c_uint
 ExternalMemoryHandleTypeFlagsNV = c_uint
 ExternalMemoryFeatureFlagsNV = c_uint
+SurfaceCounterFlagsEXT = c_uint
 
 # ENUMS
 
@@ -959,6 +970,10 @@ DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT = 25
 DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT = 26
 DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT = 27
 DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT = 28
+DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT = 29
+DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT = 30
+DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT = 31
+DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT = 32
 
 DebugReportErrorEXT = c_uint
 DEBUG_REPORT_ERROR_NONE_EXT = 0
@@ -969,15 +984,59 @@ RASTERIZATION_ORDER_STRICT_AMD = 0
 RASTERIZATION_ORDER_RELAXED_AMD = 1
 
 ExternalMemoryHandleTypeFlagBitsNV = c_uint
-EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_NV = 0x00000001
-EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_NV = 0x00000002
-EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_BIT_NV = 0x00000004
-EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_KMT_BIT_NV = 0x00000008
+EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT_NV = 1<<0
+EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT_NV = 1<<1
+EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_BIT_NV = 1<<2
+EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_IMAGE_KMT_BIT_NV = 1<<3
 
 ExternalMemoryFeatureFlagBitsNV = c_uint
-EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_NV = 0x00000001
-EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_NV = 0x00000002
-EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_NV = 0x00000004
+EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_NV = 1<<0
+EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT_NV = 1<<1
+EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT_NV = 1<<2
+
+ValidationCheckEXT = c_uint
+VALIDATION_CHECK_ALL_EXT = 0
+
+IndirectCommandsLayoutUsageFlagBitsNVX = c_uint
+INDIRECT_COMMANDS_LAYOUT_USAGE_UNORDERED_SEQUENCES_BIT_NVX = 1<<0
+INDIRECT_COMMANDS_LAYOUT_USAGE_SPARSE_SEQUENCES_BIT_NVX = 1<<1
+INDIRECT_COMMANDS_LAYOUT_USAGE_EMPTY_EXECUTIONS_BIT_NVX = 1<<2
+INDIRECT_COMMANDS_LAYOUT_USAGE_INDEXED_SEQUENCES_BIT_NVX = 1<<3
+
+ObjectEntryUsageFlagBitsNVX = c_uint
+OBJECT_ENTRY_USAGE_GRAPHICS_BIT_NVX = 1<<0
+OBJECT_ENTRY_USAGE_COMPUTE_BIT_NVX = 1<<1
+
+IndirectCommandsTokenTypeNVX = c_uint
+INDIRECT_COMMANDS_TOKEN_PIPELINE_NVX = 0
+INDIRECT_COMMANDS_TOKEN_DESCRIPTOR_SET_NVX = 1
+INDIRECT_COMMANDS_TOKEN_INDEX_BUFFER_NVX = 2
+INDIRECT_COMMANDS_TOKEN_VERTEX_BUFFER_NVX = 3
+INDIRECT_COMMANDS_TOKEN_PUSH_CONSTANT_NVX = 4
+INDIRECT_COMMANDS_TOKEN_DRAW_INDEXED_NVX = 5
+INDIRECT_COMMANDS_TOKEN_DRAW_NVX = 6
+INDIRECT_COMMANDS_TOKEN_DISPATCH_NVX = 7
+
+ObjectEntryTypeNVX = c_uint
+OBJECT_ENTRY_DESCRIPTOR_SET_NVX = 0
+OBJECT_ENTRY_PIPELINE_NVX = 1
+OBJECT_ENTRY_INDEX_BUFFER_NVX = 2
+OBJECT_ENTRY_VERTEX_BUFFER_NVX = 3
+OBJECT_ENTRY_PUSH_CONSTANT_NVX = 4
+
+SurfaceCounterFlagBitsEXT = c_uint
+SURFACE_COUNTER_VBLANK_EXT = 1<<0
+
+DisplayPowerStateEXT = c_uint
+DISPLAY_POWER_STATE_OFF_EXT = 0
+DISPLAY_POWER_STATE_SUSPEND_EXT = 1
+DISPLAY_POWER_STATE_ON_EXT = 2
+
+DeviceEventTypeEXT = c_uint
+DEVICE_EVENT_TYPE_DISPLAY_HOTPLUG_EXT = 0
+
+DisplayEventTypeEXT = c_uint
+DISPLAY_EVENT_TYPE_FIRST_PIXEL_OUT_EXT = 0
 
 
 # FUNC POINTERS
@@ -2166,6 +2225,13 @@ MirSurfaceCreateInfoKHR = define_structure('MirSurfaceCreateInfoKHR',
     ('mir_surface', MirSurface),
 )
 
+ViSurfaceCreateInfoNN = define_structure('ViSurfaceCreateInfoNN',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('flags', ViSurfaceCreateFlagsNN),
+    ('window', c_void_p),
+)
+
 WaylandSurfaceCreateInfoKHR = define_structure('WaylandSurfaceCreateInfoKHR',
     ('s_type', StructureType),
     ('next', c_void_p),
@@ -2243,10 +2309,11 @@ DebugReportCallbackCreateInfoEXT = define_structure('DebugReportCallbackCreateIn
     ('user_data', c_void_p),
 )
 
-DebugReportLayerFlagsEXT = define_structure('DebugReportLayerFlagsEXT',
+ValidationFlagsEXT = define_structure('ValidationFlagsEXT',
     ('s_type', StructureType),
     ('next', c_void_p),
-    ('enabled_validation_flags', c_uint64),
+    ('disabled_validation_check_count', c_uint),
+    ('disabled_validation_checks', POINTER(ValidationCheckEXT)),
 )
 
 PipelineRasterizationStateRasterizationOrderAMD = define_structure('PipelineRasterizationStateRasterizationOrderAMD',
@@ -2344,24 +2411,340 @@ Win32KeyedMutexAcquireReleaseInfoNV = define_structure('Win32KeyedMutexAcquireRe
     ('release_keys', POINTER(c_uint64)),
 )
 
+DeviceGeneratedCommandsFeaturesNVX = define_structure('DeviceGeneratedCommandsFeaturesNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('compute_binding_point_support', Bool32),
+)
+
+DeviceGeneratedCommandsLimitsNVX = define_structure('DeviceGeneratedCommandsLimitsNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('max_indirect_commands_layout_token_count', c_uint),
+    ('max_object_entry_counts', c_uint),
+    ('min_sequence_count_buffer_offset_alignment', c_uint),
+    ('min_sequence_index_buffer_offset_alignment', c_uint),
+    ('min_commands_token_buffer_offset_alignment', c_uint),
+)
+
+IndirectCommandsTokenNVX = define_structure('IndirectCommandsTokenNVX',
+    ('token_type', IndirectCommandsTokenTypeNVX),
+    ('buffer', Buffer),
+    ('offset', DeviceSize),
+)
+
+IndirectCommandsLayoutTokenNVX = define_structure('IndirectCommandsLayoutTokenNVX',
+    ('token_type', IndirectCommandsTokenTypeNVX),
+    ('binding_unit', c_uint),
+    ('dynamic_count', c_uint),
+    ('divisor', c_uint),
+)
+
+IndirectCommandsLayoutCreateInfoNVX = define_structure('IndirectCommandsLayoutCreateInfoNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('pipeline_bind_point', PipelineBindPoint),
+    ('flags', IndirectCommandsLayoutUsageFlagsNVX),
+    ('token_count', c_uint),
+    ('tokens', POINTER(IndirectCommandsLayoutTokenNVX)),
+)
+
+CmdProcessCommandsInfoNVX = define_structure('CmdProcessCommandsInfoNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('object_table', ObjectTableNVX),
+    ('indirect_commands_layout', IndirectCommandsLayoutNVX),
+    ('indirect_commands_token_count', c_uint),
+    ('indirect_commands_tokens', POINTER(IndirectCommandsTokenNVX)),
+    ('max_sequences_count', c_uint),
+    ('target_command_buffer', CommandBuffer),
+    ('sequences_count_buffer', Buffer),
+    ('sequences_count_offset', DeviceSize),
+    ('sequences_index_buffer', Buffer),
+    ('sequences_index_offset', DeviceSize),
+)
+
+CmdReserveSpaceForCommandsInfoNVX = define_structure('CmdReserveSpaceForCommandsInfoNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('object_table', ObjectTableNVX),
+    ('indirect_commands_layout', IndirectCommandsLayoutNVX),
+    ('max_sequences_count', c_uint),
+)
+
+ObjectTableCreateInfoNVX = define_structure('ObjectTableCreateInfoNVX',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('object_count', c_uint),
+    ('object_entry_types', POINTER(ObjectEntryTypeNVX)),
+    ('object_entry_counts', POINTER(c_uint)),
+    ('object_entry_usage_flags', POINTER(ObjectEntryUsageFlagsNVX)),
+    ('max_uniform_buffers_per_descriptor', c_uint),
+    ('max_storage_buffers_per_descriptor', c_uint),
+    ('max_storage_images_per_descriptor', c_uint),
+    ('max_sampled_images_per_descriptor', c_uint),
+    ('max_pipeline_layouts', c_uint),
+)
+
+ObjectTableEntryNVX = define_structure('ObjectTableEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+)
+
+ObjectTablePipelineEntryNVX = define_structure('ObjectTablePipelineEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+    ('pipeline', Pipeline),
+)
+
+ObjectTableDescriptorSetEntryNVX = define_structure('ObjectTableDescriptorSetEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+    ('pipeline_layout', PipelineLayout),
+    ('descriptor_set', DescriptorSet),
+)
+
+ObjectTableVertexBufferEntryNVX = define_structure('ObjectTableVertexBufferEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+    ('buffer', Buffer),
+)
+
+ObjectTableIndexBufferEntryNVX = define_structure('ObjectTableIndexBufferEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+    ('buffer', Buffer),
+    ('index_type', IndexType),
+)
+
+ObjectTablePushConstantEntryNVX = define_structure('ObjectTablePushConstantEntryNVX',
+    ('type', ObjectEntryTypeNVX),
+    ('flags', ObjectEntryUsageFlagsNVX),
+    ('pipeline_layout', PipelineLayout),
+    ('stage_flags', ShaderStageFlags),
+)
+
+PhysicalDeviceFeatures2KHR = define_structure('PhysicalDeviceFeatures2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('features', PhysicalDeviceFeatures),
+)
+
+PhysicalDeviceProperties2KHR = define_structure('PhysicalDeviceProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('properties', PhysicalDeviceProperties),
+)
+
+FormatProperties2KHR = define_structure('FormatProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('format_properties', FormatProperties),
+)
+
+ImageFormatProperties2KHR = define_structure('ImageFormatProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('image_format_properties', ImageFormatProperties),
+)
+
+PhysicalDeviceImageFormatInfo2KHR = define_structure('PhysicalDeviceImageFormatInfo2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('format', Format),
+    ('type', ImageType),
+    ('tiling', ImageTiling),
+    ('usage', ImageUsageFlags),
+    ('flags', ImageCreateFlags),
+)
+
+QueueFamilyProperties2KHR = define_structure('QueueFamilyProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('queue_family_properties', QueueFamilyProperties),
+)
+
+PhysicalDeviceMemoryProperties2KHR = define_structure('PhysicalDeviceMemoryProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('memory_properties', PhysicalDeviceMemoryProperties),
+)
+
+SparseImageFormatProperties2KHR = define_structure('SparseImageFormatProperties2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('properties', SparseImageFormatProperties),
+)
+
+PhysicalDeviceSparseImageFormatInfo2KHR = define_structure('PhysicalDeviceSparseImageFormatInfo2KHR',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('format', Format),
+    ('type', ImageType),
+    ('samples', SampleCountFlagBits),
+    ('usage', ImageUsageFlags),
+    ('tiling', ImageTiling),
+)
+
+SurfaceCapabilities2EXT = define_structure('SurfaceCapabilities2EXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('min_image_count', c_uint),
+    ('max_image_count', c_uint),
+    ('current_extent', Extent2D),
+    ('min_image_extent', Extent2D),
+    ('max_image_extent', Extent2D),
+    ('max_image_array_layers', c_uint),
+    ('supported_transforms', SurfaceTransformFlagsKHR),
+    ('current_transform', SurfaceTransformFlagBitsKHR),
+    ('supported_composite_alpha', CompositeAlphaFlagsKHR),
+    ('supported_usage_flags', ImageUsageFlags),
+    ('supported_surface_counters', SurfaceCounterFlagsEXT),
+)
+
+DisplayPowerInfoEXT = define_structure('DisplayPowerInfoEXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('power_state', DisplayPowerStateEXT),
+)
+
+DeviceEventInfoEXT = define_structure('DeviceEventInfoEXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('device_event', DeviceEventTypeEXT),
+)
+
+DisplayEventInfoEXT = define_structure('DisplayEventInfoEXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('display_event', DisplayEventTypeEXT),
+)
+
+SwapchainCounterCreateInfoEXT = define_structure('SwapchainCounterCreateInfoEXT',
+    ('s_type', StructureType),
+    ('next', c_void_p),
+    ('surface_counters', SurfaceCounterFlagsEXT),
+)
+
+XYColorEXT = define_structure('XYColorEXT',
+    ('x', c_float),
+    ('y', c_float),
+)
+
+SMPTE2086MetadataEXT = define_structure('SMPTE2086MetadataEXT',
+    ('display_primary_red', XYColorEXT),
+    ('display_primary_green', XYColorEXT),
+    ('display_primary_blue', XYColorEXT),
+    ('white_point', XYColorEXT),
+    ('max_luminance', c_float),
+    ('min_luminance', c_float),
+)
+
 
 # FUNCTIONS 
 
-InstanceFunctions = (
-    (b'vkDestroyInstance', None, Instance, POINTER(AllocationCallbacks), ),
-    (b'vkEnumeratePhysicalDevices', Result, Instance, POINTER(c_uint), POINTER(PhysicalDevice), ),
-    (b'vkGetDeviceProcAddr', fn_VoidFunction, Device, c_char_p, ),
-    (b'vkCreateAndroidSurfaceKHR', Result, Instance, POINTER(AndroidSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateDisplayPlaneSurfaceKHR', Result, Instance, POINTER(DisplaySurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateMirSurfaceKHR', Result, Instance, POINTER(MirSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkDestroySurfaceKHR', None, Instance, SurfaceKHR, POINTER(AllocationCallbacks), ),
-    (b'vkCreateWaylandSurfaceKHR', Result, Instance, POINTER(WaylandSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateWin32SurfaceKHR', Result, Instance, POINTER(Win32SurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateXlibSurfaceKHR', Result, Instance, POINTER(XlibSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateXcbSurfaceKHR', Result, Instance, POINTER(XcbSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
-    (b'vkCreateDebugReportCallbackEXT', Result, Instance, POINTER(DebugReportCallbackCreateInfoEXT), POINTER(AllocationCallbacks), POINTER(DebugReportCallbackEXT), ),
-    (b'vkDestroyDebugReportCallbackEXT', None, Instance, DebugReportCallbackEXT, POINTER(AllocationCallbacks), ),
-    (b'vkDebugReportMessageEXT', None, Instance, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int, c_char_p, c_char_p, ),
+LoaderFunctions = (
+    (b'vkCreateInstance', Result, POINTER(InstanceCreateInfo), POINTER(AllocationCallbacks), POINTER(Instance), ),
+    (b'vkEnumerateInstanceLayerProperties', Result, POINTER(c_uint), POINTER(LayerProperties), ),
+    (b'vkEnumerateInstanceExtensionProperties', Result, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
+)
+
+PhysicalDeviceFunctions = (
+    (b'vkGetPhysicalDeviceProperties', None, PhysicalDevice, POINTER(PhysicalDeviceProperties), ),
+    (b'vkGetPhysicalDeviceQueueFamilyProperties', None, PhysicalDevice, POINTER(c_uint), POINTER(QueueFamilyProperties), ),
+    (b'vkGetPhysicalDeviceMemoryProperties', None, PhysicalDevice, POINTER(PhysicalDeviceMemoryProperties), ),
+    (b'vkGetPhysicalDeviceFeatures', None, PhysicalDevice, POINTER(PhysicalDeviceFeatures), ),
+    (b'vkGetPhysicalDeviceFormatProperties', None, PhysicalDevice, Format, POINTER(FormatProperties), ),
+    (b'vkGetPhysicalDeviceImageFormatProperties', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, POINTER(ImageFormatProperties), ),
+    (b'vkCreateDevice', Result, PhysicalDevice, POINTER(DeviceCreateInfo), POINTER(AllocationCallbacks), POINTER(Device), ),
+    (b'vkEnumerateDeviceLayerProperties', Result, PhysicalDevice, POINTER(c_uint), POINTER(LayerProperties), ),
+    (b'vkEnumerateDeviceExtensionProperties', Result, PhysicalDevice, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
+    (b'vkGetPhysicalDeviceSparseImageFormatProperties', None, PhysicalDevice, Format, ImageType, SampleCountFlagBits, ImageUsageFlags, ImageTiling, POINTER(c_uint), POINTER(SparseImageFormatProperties), ),
+    (b'vkGetPhysicalDeviceDisplayPropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPropertiesKHR), ),
+    (b'vkGetPhysicalDeviceDisplayPlanePropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPlanePropertiesKHR), ),
+    (b'vkGetDisplayPlaneSupportedDisplaysKHR', Result, PhysicalDevice, c_uint, POINTER(c_uint), POINTER(DisplayKHR), ),
+    (b'vkGetDisplayModePropertiesKHR', Result, PhysicalDevice, DisplayKHR, POINTER(c_uint), POINTER(DisplayModePropertiesKHR), ),
+    (b'vkCreateDisplayModeKHR', Result, PhysicalDevice, DisplayKHR, POINTER(DisplayModeCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(DisplayModeKHR), ),
+    (b'vkGetDisplayPlaneCapabilitiesKHR', Result, PhysicalDevice, DisplayModeKHR, c_uint, POINTER(DisplayPlaneCapabilitiesKHR), ),
+    (b'vkGetPhysicalDeviceMirPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, MirConnection, ),
+    (b'vkGetPhysicalDeviceSurfaceSupportKHR', Result, PhysicalDevice, c_uint, SurfaceKHR, POINTER(Bool32), ),
+    (b'vkGetPhysicalDeviceSurfaceCapabilitiesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(SurfaceCapabilitiesKHR), ),
+    (b'vkGetPhysicalDeviceSurfaceFormatsKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(SurfaceFormatKHR), ),
+    (b'vkGetPhysicalDeviceSurfacePresentModesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(PresentModeKHR), ),
+    (b'vkGetPhysicalDeviceWaylandPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, wl_display, ),
+    (b'vkGetPhysicalDeviceWin32PresentationSupportKHR', Bool32, PhysicalDevice, c_uint, ),
+    (b'vkGetPhysicalDeviceXlibPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, Display, VisualID, ),
+    (b'vkGetPhysicalDeviceXcbPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, xcb_connection_t, xcb_visualid_t, ),
+    (b'vkGetPhysicalDeviceExternalImageFormatPropertiesNV', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, ExternalMemoryHandleTypeFlagsNV, POINTER(ExternalImageFormatPropertiesNV), ),
+    (b'vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX', None, PhysicalDevice, POINTER(DeviceGeneratedCommandsFeaturesNVX), POINTER(DeviceGeneratedCommandsLimitsNVX), ),
+    (b'vkGetPhysicalDeviceFeatures2KHR', None, PhysicalDevice, POINTER(PhysicalDeviceFeatures2KHR), ),
+    (b'vkGetPhysicalDeviceProperties2KHR', None, PhysicalDevice, POINTER(PhysicalDeviceProperties2KHR), ),
+    (b'vkGetPhysicalDeviceFormatProperties2KHR', None, PhysicalDevice, Format, POINTER(FormatProperties2KHR), ),
+    (b'vkGetPhysicalDeviceImageFormatProperties2KHR', Result, PhysicalDevice, POINTER(PhysicalDeviceImageFormatInfo2KHR), POINTER(ImageFormatProperties2KHR), ),
+    (b'vkGetPhysicalDeviceQueueFamilyProperties2KHR', None, PhysicalDevice, POINTER(c_uint), POINTER(QueueFamilyProperties2KHR), ),
+    (b'vkGetPhysicalDeviceMemoryProperties2KHR', None, PhysicalDevice, POINTER(PhysicalDeviceMemoryProperties2KHR), ),
+    (b'vkGetPhysicalDeviceSparseImageFormatProperties2KHR', None, PhysicalDevice, POINTER(PhysicalDeviceSparseImageFormatInfo2KHR), POINTER(c_uint), POINTER(SparseImageFormatProperties2KHR), ),
+    (b'vkReleaseDisplayEXT', Result, PhysicalDevice, DisplayKHR, ),
+    (b'vkAcquireXlibDisplayEXT', Result, PhysicalDevice, Display, DisplayKHR, ),
+    (b'vkGetRandROutputDisplayEXT', Result, PhysicalDevice, Display, RROutput, POINTER(DisplayKHR), ),
+    (b'vkGetPhysicalDeviceSurfaceCapabilities2EXT', Result, PhysicalDevice, SurfaceKHR, POINTER(SurfaceCapabilities2EXT), ),
+)
+
+CommandBufferFunctions = (
+    (b'vkBeginCommandBuffer', Result, CommandBuffer, POINTER(CommandBufferBeginInfo), ),
+    (b'vkEndCommandBuffer', Result, CommandBuffer, ),
+    (b'vkResetCommandBuffer', Result, CommandBuffer, CommandBufferResetFlags, ),
+    (b'vkCmdBindPipeline', None, CommandBuffer, PipelineBindPoint, Pipeline, ),
+    (b'vkCmdSetViewport', None, CommandBuffer, c_uint, c_uint, POINTER(Viewport), ),
+    (b'vkCmdSetScissor', None, CommandBuffer, c_uint, c_uint, POINTER(Rect2D), ),
+    (b'vkCmdSetLineWidth', None, CommandBuffer, c_float, ),
+    (b'vkCmdSetDepthBias', None, CommandBuffer, c_float, c_float, c_float, ),
+    (b'vkCmdSetBlendConstants', None, CommandBuffer, c_float, ),
+    (b'vkCmdSetDepthBounds', None, CommandBuffer, c_float, c_float, ),
+    (b'vkCmdSetStencilCompareMask', None, CommandBuffer, StencilFaceFlags, c_uint, ),
+    (b'vkCmdSetStencilWriteMask', None, CommandBuffer, StencilFaceFlags, c_uint, ),
+    (b'vkCmdSetStencilReference', None, CommandBuffer, StencilFaceFlags, c_uint, ),
+    (b'vkCmdBindDescriptorSets', None, CommandBuffer, PipelineBindPoint, PipelineLayout, c_uint, c_uint, POINTER(DescriptorSet), c_uint, POINTER(c_uint), ),
+    (b'vkCmdBindIndexBuffer', None, CommandBuffer, Buffer, DeviceSize, IndexType, ),
+    (b'vkCmdBindVertexBuffers', None, CommandBuffer, c_uint, c_uint, POINTER(Buffer), POINTER(DeviceSize), ),
+    (b'vkCmdDraw', None, CommandBuffer, c_uint, c_uint, c_uint, c_uint, ),
+    (b'vkCmdDrawIndexed', None, CommandBuffer, c_uint, c_uint, c_uint, c_int, c_uint, ),
+    (b'vkCmdDrawIndirect', None, CommandBuffer, Buffer, DeviceSize, c_uint, c_uint, ),
+    (b'vkCmdDrawIndexedIndirect', None, CommandBuffer, Buffer, DeviceSize, c_uint, c_uint, ),
+    (b'vkCmdDispatch', None, CommandBuffer, c_uint, c_uint, c_uint, ),
+    (b'vkCmdDispatchIndirect', None, CommandBuffer, Buffer, DeviceSize, ),
+    (b'vkCmdCopyBuffer', None, CommandBuffer, Buffer, Buffer, c_uint, POINTER(BufferCopy), ),
+    (b'vkCmdCopyImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageCopy), ),
+    (b'vkCmdBlitImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageBlit), Filter, ),
+    (b'vkCmdCopyBufferToImage', None, CommandBuffer, Buffer, Image, ImageLayout, c_uint, POINTER(BufferImageCopy), ),
+    (b'vkCmdCopyImageToBuffer', None, CommandBuffer, Image, ImageLayout, Buffer, c_uint, POINTER(BufferImageCopy), ),
+    (b'vkCmdUpdateBuffer', None, CommandBuffer, Buffer, DeviceSize, DeviceSize, c_void_p, ),
+    (b'vkCmdFillBuffer', None, CommandBuffer, Buffer, DeviceSize, DeviceSize, c_uint, ),
+    (b'vkCmdClearColorImage', None, CommandBuffer, Image, ImageLayout, POINTER(ClearColorValue), c_uint, POINTER(ImageSubresourceRange), ),
+    (b'vkCmdClearDepthStencilImage', None, CommandBuffer, Image, ImageLayout, POINTER(ClearDepthStencilValue), c_uint, POINTER(ImageSubresourceRange), ),
+    (b'vkCmdClearAttachments', None, CommandBuffer, c_uint, POINTER(ClearAttachment), c_uint, POINTER(ClearRect), ),
+    (b'vkCmdResolveImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageResolve), ),
+    (b'vkCmdSetEvent', None, CommandBuffer, Event, PipelineStageFlags, ),
+    (b'vkCmdResetEvent', None, CommandBuffer, Event, PipelineStageFlags, ),
+    (b'vkCmdWaitEvents', None, CommandBuffer, c_uint, POINTER(Event), PipelineStageFlags, PipelineStageFlags, c_uint, POINTER(MemoryBarrier), c_uint, POINTER(BufferMemoryBarrier), c_uint, POINTER(ImageMemoryBarrier), ),
+    (b'vkCmdPipelineBarrier', None, CommandBuffer, PipelineStageFlags, PipelineStageFlags, DependencyFlags, c_uint, POINTER(MemoryBarrier), c_uint, POINTER(BufferMemoryBarrier), c_uint, POINTER(ImageMemoryBarrier), ),
+    (b'vkCmdBeginQuery', None, CommandBuffer, QueryPool, c_uint, QueryControlFlags, ),
+    (b'vkCmdEndQuery', None, CommandBuffer, QueryPool, c_uint, ),
+    (b'vkCmdResetQueryPool', None, CommandBuffer, QueryPool, c_uint, c_uint, ),
+    (b'vkCmdWriteTimestamp', None, CommandBuffer, PipelineStageFlagBits, QueryPool, c_uint, ),
+    (b'vkCmdCopyQueryPoolResults', None, CommandBuffer, QueryPool, c_uint, c_uint, Buffer, DeviceSize, DeviceSize, QueryResultFlags, ),
+    (b'vkCmdPushConstants', None, CommandBuffer, PipelineLayout, ShaderStageFlags, c_uint, c_uint, c_void_p, ),
+    (b'vkCmdBeginRenderPass', None, CommandBuffer, POINTER(RenderPassBeginInfo), SubpassContents, ),
+    (b'vkCmdNextSubpass', None, CommandBuffer, SubpassContents, ),
+    (b'vkCmdEndRenderPass', None, CommandBuffer, ),
+    (b'vkCmdExecuteCommands', None, CommandBuffer, c_uint, POINTER(CommandBuffer), ),
+    (b'vkCmdDebugMarkerBeginEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
+    (b'vkCmdDebugMarkerEndEXT', None, CommandBuffer, ),
+    (b'vkCmdDebugMarkerInsertEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
+    (b'vkCmdDrawIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
+    (b'vkCmdDrawIndexedIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
+    (b'vkCmdProcessCommandsNVX', None, CommandBuffer, POINTER(CmdProcessCommandsInfoNVX), ),
+    (b'vkCmdReserveSpaceForCommandsNVX', None, CommandBuffer, POINTER(CmdReserveSpaceForCommandsInfoNVX), ),
 )
 
 DeviceFunctions = (
@@ -2443,61 +2826,36 @@ DeviceFunctions = (
     (b'vkDebugMarkerSetObjectNameEXT', Result, Device, POINTER(DebugMarkerObjectNameInfoEXT), ),
     (b'vkDebugMarkerSetObjectTagEXT', Result, Device, POINTER(DebugMarkerObjectTagInfoEXT), ),
     (b'vkGetMemoryWin32HandleNV', Result, Device, DeviceMemory, ExternalMemoryHandleTypeFlagsNV, POINTER(HANDLE), ),
+    (b'vkCreateIndirectCommandsLayoutNVX', Result, Device, POINTER(IndirectCommandsLayoutCreateInfoNVX), POINTER(AllocationCallbacks), POINTER(IndirectCommandsLayoutNVX), ),
+    (b'vkDestroyIndirectCommandsLayoutNVX', None, Device, IndirectCommandsLayoutNVX, POINTER(AllocationCallbacks), ),
+    (b'vkCreateObjectTableNVX', Result, Device, POINTER(ObjectTableCreateInfoNVX), POINTER(AllocationCallbacks), POINTER(ObjectTableNVX), ),
+    (b'vkDestroyObjectTableNVX', None, Device, ObjectTableNVX, POINTER(AllocationCallbacks), ),
+    (b'vkRegisterObjectsNVX', Result, Device, ObjectTableNVX, c_uint, POINTER(ObjectTableEntryNVX), POINTER(c_uint), ),
+    (b'vkUnregisterObjectsNVX', Result, Device, ObjectTableNVX, c_uint, POINTER(ObjectEntryTypeNVX), POINTER(c_uint), ),
+    (b'vkTrimCommandPoolKHR', None, Device, CommandPool, CommandPoolTrimFlagsKHR, ),
+    (b'vkDisplayPowerControlEXT', Result, Device, DisplayKHR, POINTER(DisplayPowerInfoEXT), ),
+    (b'vkRegisterDeviceEventEXT', Result, Device, POINTER(DeviceEventInfoEXT), POINTER(AllocationCallbacks), POINTER(Fence), ),
+    (b'vkRegisterDisplayEventEXT', Result, Device, DisplayKHR, POINTER(DisplayEventInfoEXT), POINTER(AllocationCallbacks), POINTER(Fence), ),
+    (b'vkGetSwapchainCounterEXT', Result, Device, SwapchainKHR, SurfaceCounterFlagBitsEXT, POINTER(c_uint64), ),
+    (b'vkSetSMPTE2086MetadataEXT', None, Device, c_uint, POINTER(SwapchainKHR), POINTER(SMPTE2086MetadataEXT), ),
 )
 
-CommandBufferFunctions = (
-    (b'vkBeginCommandBuffer', Result, CommandBuffer, POINTER(CommandBufferBeginInfo), ),
-    (b'vkEndCommandBuffer', Result, CommandBuffer, ),
-    (b'vkResetCommandBuffer', Result, CommandBuffer, CommandBufferResetFlags, ),
-    (b'vkCmdBindPipeline', None, CommandBuffer, PipelineBindPoint, Pipeline, ),
-    (b'vkCmdSetViewport', None, CommandBuffer, c_uint, c_uint, POINTER(Viewport), ),
-    (b'vkCmdSetScissor', None, CommandBuffer, c_uint, c_uint, POINTER(Rect2D), ),
-    (b'vkCmdSetLineWidth', None, CommandBuffer, c_float, ),
-    (b'vkCmdSetDepthBias', None, CommandBuffer, c_float, c_float, c_float, ),
-    (b'vkCmdSetBlendConstants', None, CommandBuffer, c_float, ),
-    (b'vkCmdSetDepthBounds', None, CommandBuffer, c_float, c_float, ),
-    (b'vkCmdSetStencilCompareMask', None, CommandBuffer, StencilFaceFlags, c_uint, ),
-    (b'vkCmdSetStencilWriteMask', None, CommandBuffer, StencilFaceFlags, c_uint, ),
-    (b'vkCmdSetStencilReference', None, CommandBuffer, StencilFaceFlags, c_uint, ),
-    (b'vkCmdBindDescriptorSets', None, CommandBuffer, PipelineBindPoint, PipelineLayout, c_uint, c_uint, POINTER(DescriptorSet), c_uint, POINTER(c_uint), ),
-    (b'vkCmdBindIndexBuffer', None, CommandBuffer, Buffer, DeviceSize, IndexType, ),
-    (b'vkCmdBindVertexBuffers', None, CommandBuffer, c_uint, c_uint, POINTER(Buffer), POINTER(DeviceSize), ),
-    (b'vkCmdDraw', None, CommandBuffer, c_uint, c_uint, c_uint, c_uint, ),
-    (b'vkCmdDrawIndexed', None, CommandBuffer, c_uint, c_uint, c_uint, c_int, c_uint, ),
-    (b'vkCmdDrawIndirect', None, CommandBuffer, Buffer, DeviceSize, c_uint, c_uint, ),
-    (b'vkCmdDrawIndexedIndirect', None, CommandBuffer, Buffer, DeviceSize, c_uint, c_uint, ),
-    (b'vkCmdDispatch', None, CommandBuffer, c_uint, c_uint, c_uint, ),
-    (b'vkCmdDispatchIndirect', None, CommandBuffer, Buffer, DeviceSize, ),
-    (b'vkCmdCopyBuffer', None, CommandBuffer, Buffer, Buffer, c_uint, POINTER(BufferCopy), ),
-    (b'vkCmdCopyImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageCopy), ),
-    (b'vkCmdBlitImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageBlit), Filter, ),
-    (b'vkCmdCopyBufferToImage', None, CommandBuffer, Buffer, Image, ImageLayout, c_uint, POINTER(BufferImageCopy), ),
-    (b'vkCmdCopyImageToBuffer', None, CommandBuffer, Image, ImageLayout, Buffer, c_uint, POINTER(BufferImageCopy), ),
-    (b'vkCmdUpdateBuffer', None, CommandBuffer, Buffer, DeviceSize, DeviceSize, c_void_p, ),
-    (b'vkCmdFillBuffer', None, CommandBuffer, Buffer, DeviceSize, DeviceSize, c_uint, ),
-    (b'vkCmdClearColorImage', None, CommandBuffer, Image, ImageLayout, POINTER(ClearColorValue), c_uint, POINTER(ImageSubresourceRange), ),
-    (b'vkCmdClearDepthStencilImage', None, CommandBuffer, Image, ImageLayout, POINTER(ClearDepthStencilValue), c_uint, POINTER(ImageSubresourceRange), ),
-    (b'vkCmdClearAttachments', None, CommandBuffer, c_uint, POINTER(ClearAttachment), c_uint, POINTER(ClearRect), ),
-    (b'vkCmdResolveImage', None, CommandBuffer, Image, ImageLayout, Image, ImageLayout, c_uint, POINTER(ImageResolve), ),
-    (b'vkCmdSetEvent', None, CommandBuffer, Event, PipelineStageFlags, ),
-    (b'vkCmdResetEvent', None, CommandBuffer, Event, PipelineStageFlags, ),
-    (b'vkCmdWaitEvents', None, CommandBuffer, c_uint, POINTER(Event), PipelineStageFlags, PipelineStageFlags, c_uint, POINTER(MemoryBarrier), c_uint, POINTER(BufferMemoryBarrier), c_uint, POINTER(ImageMemoryBarrier), ),
-    (b'vkCmdPipelineBarrier', None, CommandBuffer, PipelineStageFlags, PipelineStageFlags, DependencyFlags, c_uint, POINTER(MemoryBarrier), c_uint, POINTER(BufferMemoryBarrier), c_uint, POINTER(ImageMemoryBarrier), ),
-    (b'vkCmdBeginQuery', None, CommandBuffer, QueryPool, c_uint, QueryControlFlags, ),
-    (b'vkCmdEndQuery', None, CommandBuffer, QueryPool, c_uint, ),
-    (b'vkCmdResetQueryPool', None, CommandBuffer, QueryPool, c_uint, c_uint, ),
-    (b'vkCmdWriteTimestamp', None, CommandBuffer, PipelineStageFlagBits, QueryPool, c_uint, ),
-    (b'vkCmdCopyQueryPoolResults', None, CommandBuffer, QueryPool, c_uint, c_uint, Buffer, DeviceSize, DeviceSize, QueryResultFlags, ),
-    (b'vkCmdPushConstants', None, CommandBuffer, PipelineLayout, ShaderStageFlags, c_uint, c_uint, c_void_p, ),
-    (b'vkCmdBeginRenderPass', None, CommandBuffer, POINTER(RenderPassBeginInfo), SubpassContents, ),
-    (b'vkCmdNextSubpass', None, CommandBuffer, SubpassContents, ),
-    (b'vkCmdEndRenderPass', None, CommandBuffer, ),
-    (b'vkCmdExecuteCommands', None, CommandBuffer, c_uint, POINTER(CommandBuffer), ),
-    (b'vkCmdDebugMarkerBeginEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
-    (b'vkCmdDebugMarkerEndEXT', None, CommandBuffer, ),
-    (b'vkCmdDebugMarkerInsertEXT', None, CommandBuffer, POINTER(DebugMarkerMarkerInfoEXT), ),
-    (b'vkCmdDrawIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
-    (b'vkCmdDrawIndexedIndirectCountAMD', None, CommandBuffer, Buffer, DeviceSize, Buffer, DeviceSize, c_uint, c_uint, ),
+InstanceFunctions = (
+    (b'vkDestroyInstance', None, Instance, POINTER(AllocationCallbacks), ),
+    (b'vkEnumeratePhysicalDevices', Result, Instance, POINTER(c_uint), POINTER(PhysicalDevice), ),
+    (b'vkGetDeviceProcAddr', fn_VoidFunction, Device, c_char_p, ),
+    (b'vkCreateAndroidSurfaceKHR', Result, Instance, POINTER(AndroidSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateDisplayPlaneSurfaceKHR', Result, Instance, POINTER(DisplaySurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateMirSurfaceKHR', Result, Instance, POINTER(MirSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkDestroySurfaceKHR', None, Instance, SurfaceKHR, POINTER(AllocationCallbacks), ),
+    (b'vkCreateViSurfaceNN', Result, Instance, POINTER(ViSurfaceCreateInfoNN), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateWaylandSurfaceKHR', Result, Instance, POINTER(WaylandSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateWin32SurfaceKHR', Result, Instance, POINTER(Win32SurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateXlibSurfaceKHR', Result, Instance, POINTER(XlibSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateXcbSurfaceKHR', Result, Instance, POINTER(XcbSurfaceCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(SurfaceKHR), ),
+    (b'vkCreateDebugReportCallbackEXT', Result, Instance, POINTER(DebugReportCallbackCreateInfoEXT), POINTER(AllocationCallbacks), POINTER(DebugReportCallbackEXT), ),
+    (b'vkDestroyDebugReportCallbackEXT', None, Instance, DebugReportCallbackEXT, POINTER(AllocationCallbacks), ),
+    (b'vkDebugReportMessageEXT', None, Instance, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int, c_char_p, c_char_p, ),
 )
 
 QueueFunctions = (
@@ -2505,41 +2863,6 @@ QueueFunctions = (
     (b'vkQueueWaitIdle', Result, Queue, ),
     (b'vkQueueBindSparse', Result, Queue, c_uint, POINTER(BindSparseInfo), Fence, ),
     (b'vkQueuePresentKHR', Result, Queue, POINTER(PresentInfoKHR), ),
-)
-
-PhysicalDeviceFunctions = (
-    (b'vkGetPhysicalDeviceProperties', None, PhysicalDevice, POINTER(PhysicalDeviceProperties), ),
-    (b'vkGetPhysicalDeviceQueueFamilyProperties', None, PhysicalDevice, POINTER(c_uint), POINTER(QueueFamilyProperties), ),
-    (b'vkGetPhysicalDeviceMemoryProperties', None, PhysicalDevice, POINTER(PhysicalDeviceMemoryProperties), ),
-    (b'vkGetPhysicalDeviceFeatures', None, PhysicalDevice, POINTER(PhysicalDeviceFeatures), ),
-    (b'vkGetPhysicalDeviceFormatProperties', None, PhysicalDevice, Format, POINTER(FormatProperties), ),
-    (b'vkGetPhysicalDeviceImageFormatProperties', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, POINTER(ImageFormatProperties), ),
-    (b'vkCreateDevice', Result, PhysicalDevice, POINTER(DeviceCreateInfo), POINTER(AllocationCallbacks), POINTER(Device), ),
-    (b'vkEnumerateDeviceLayerProperties', Result, PhysicalDevice, POINTER(c_uint), POINTER(LayerProperties), ),
-    (b'vkEnumerateDeviceExtensionProperties', Result, PhysicalDevice, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
-    (b'vkGetPhysicalDeviceSparseImageFormatProperties', None, PhysicalDevice, Format, ImageType, SampleCountFlagBits, ImageUsageFlags, ImageTiling, POINTER(c_uint), POINTER(SparseImageFormatProperties), ),
-    (b'vkGetPhysicalDeviceDisplayPropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPropertiesKHR), ),
-    (b'vkGetPhysicalDeviceDisplayPlanePropertiesKHR', Result, PhysicalDevice, POINTER(c_uint), POINTER(DisplayPlanePropertiesKHR), ),
-    (b'vkGetDisplayPlaneSupportedDisplaysKHR', Result, PhysicalDevice, c_uint, POINTER(c_uint), POINTER(DisplayKHR), ),
-    (b'vkGetDisplayModePropertiesKHR', Result, PhysicalDevice, DisplayKHR, POINTER(c_uint), POINTER(DisplayModePropertiesKHR), ),
-    (b'vkCreateDisplayModeKHR', Result, PhysicalDevice, DisplayKHR, POINTER(DisplayModeCreateInfoKHR), POINTER(AllocationCallbacks), POINTER(DisplayModeKHR), ),
-    (b'vkGetDisplayPlaneCapabilitiesKHR', Result, PhysicalDevice, DisplayModeKHR, c_uint, POINTER(DisplayPlaneCapabilitiesKHR), ),
-    (b'vkGetPhysicalDeviceMirPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, MirConnection, ),
-    (b'vkGetPhysicalDeviceSurfaceSupportKHR', Result, PhysicalDevice, c_uint, SurfaceKHR, POINTER(Bool32), ),
-    (b'vkGetPhysicalDeviceSurfaceCapabilitiesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(SurfaceCapabilitiesKHR), ),
-    (b'vkGetPhysicalDeviceSurfaceFormatsKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(SurfaceFormatKHR), ),
-    (b'vkGetPhysicalDeviceSurfacePresentModesKHR', Result, PhysicalDevice, SurfaceKHR, POINTER(c_uint), POINTER(PresentModeKHR), ),
-    (b'vkGetPhysicalDeviceWaylandPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, wl_display, ),
-    (b'vkGetPhysicalDeviceWin32PresentationSupportKHR', Bool32, PhysicalDevice, c_uint, ),
-    (b'vkGetPhysicalDeviceXlibPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, Display, VisualID, ),
-    (b'vkGetPhysicalDeviceXcbPresentationSupportKHR', Bool32, PhysicalDevice, c_uint, xcb_connection_t, xcb_visualid_t, ),
-    (b'vkGetPhysicalDeviceExternalImageFormatPropertiesNV', Result, PhysicalDevice, Format, ImageType, ImageTiling, ImageUsageFlags, ImageCreateFlags, ExternalMemoryHandleTypeFlagsNV, POINTER(ExternalImageFormatPropertiesNV), ),
-)
-
-LoaderFunctions = (
-    (b'vkCreateInstance', Result, POINTER(InstanceCreateInfo), POINTER(AllocationCallbacks), POINTER(Instance), ),
-    (b'vkEnumerateInstanceLayerProperties', Result, POINTER(c_uint), POINTER(LayerProperties), ),
-    (b'vkEnumerateInstanceExtensionProperties', Result, c_char_p, POINTER(c_uint), POINTER(ExtensionProperties), ),
 )
 
 GetInstanceProcAddr = vk.vkGetInstanceProcAddr
@@ -2612,11 +2935,10 @@ ANDROID_NATIVE_BUFFER_NUMBER = 11
 ANDROID_NATIVE_BUFFER_NAME = "VK_ANDROID_native_buffer"
 
 #VK_EXT_debug_report
-EXT_DEBUG_REPORT_SPEC_VERSION = 4
+EXT_DEBUG_REPORT_SPEC_VERSION = 5
 EXT_DEBUG_REPORT_EXTENSION_NAME = "VK_EXT_debug_report"
 STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT = 1000011000
 ERROR_VALIDATION_FAILED_EXT = -1000011001
-STRUCTURE_TYPE_DEBUG_REPORT_VALIDATION_FLAGS_EXT = 1000011002
 STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT
 
 #VK_NV_glsl_shader
@@ -2649,7 +2971,7 @@ AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_SPEC_VERSION = 1
 AMD_SHADER_EXPLICIT_VERTEX_PARAMETER_EXTENSION_NAME = "VK_AMD_shader_explicit_vertex_parameter"
 
 #VK_EXT_debug_marker
-EXT_DEBUG_MARKER_SPEC_VERSION = 3
+EXT_DEBUG_MARKER_SPEC_VERSION = 4
 EXT_DEBUG_MARKER_EXTENSION_NAME = "VK_EXT_debug_marker"
 STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT = 1000022000
 STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT = 1000022001
@@ -2667,8 +2989,20 @@ STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV = 1000026001
 STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV = 1000026002
 
 #VK_AMD_draw_indirect_count
-AMD_EXTENSION_DRAW_INDIRECT_COUNT_SPEC_VERSION = 1
-AMD_EXTENSION_DRAW_INDIRECT_COUNT_EXTENSION_NAME = "VK_AMD_draw_indirect_count"
+AMD_DRAW_INDIRECT_COUNT_SPEC_VERSION = 1
+AMD_DRAW_INDIRECT_COUNT_EXTENSION_NAME = "VK_AMD_draw_indirect_count"
+
+#VK_AMD_negative_viewport_height
+AMD_NEGATIVE_VIEWPORT_HEIGHT_SPEC_VERSION = 1
+AMD_NEGATIVE_VIEWPORT_HEIGHT_EXTENSION_NAME = "VK_AMD_negative_viewport_height"
+
+#VK_AMD_gpu_shader_half_float
+AMD_GPU_SHADER_HALF_FLOAT_SPEC_VERSION = 1
+AMD_GPU_SHADER_HALF_FLOAT_EXTENSION_NAME = "VK_AMD_gpu_shader_half_float"
+
+#VK_AMD_shader_ballot
+AMD_SHADER_BALLOT_SPEC_VERSION = 1
+AMD_SHADER_BALLOT_EXTENSION_NAME = "VK_AMD_shader_ballot"
 
 #VK_IMG_format_pvrtc
 IMG_FORMAT_PVRTC_SPEC_VERSION = 1
@@ -2702,6 +3036,99 @@ STRUCTURE_TYPE_EXPORT_MEMORY_WIN32_HANDLE_INFO_NV = 1000057001
 NV_WIN32_KEYED_MUTEX_SPEC_VERSION = 1
 NV_WIN32_KEYED_MUTEX_EXTENSION_NAME = "VK_NV_win32_keyed_mutex"
 STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_NV = 1000058000
+
+#VK_KHR_get_physical_device_properties2
+KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION = 1
+KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME = "VK_KHR_get_physical_device_properties2"
+STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR = 1000059000
+STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR = 1000059001
+STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR = 1000059002
+STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR = 1000059003
+STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR = 1000059004
+STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR = 1000059005
+STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR = 1000059006
+STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR = 1000059007
+STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR = 1000059008
+
+#VK_EXT_validation_flags
+EXT_VALIDATION_FLAGS_SPEC_VERSION = 1
+EXT_VALIDATION_FLAGS_EXTENSION_NAME = "VK_EXT_validation_flags"
+STRUCTURE_TYPE_VALIDATION_FLAGS_EXT = 1000061000
+
+#VK_NN_vi_surface
+NN_VI_SURFACE_SPEC_VERSION = 1
+NN_VI_SURFACE_EXTENSION_NAME = "VK_NN_vi_surface"
+STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN = 1000062000
+
+#VK_KHR_shader_draw_parameters
+KHR_SHADER_DRAW_PARAMETERS_SPEC_VERSION = 1
+KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME = "VK_KHR_shader_draw_parameters"
+
+#VK_EXT_shader_subgroup_ballot
+EXT_SHADER_SUBGROUP_BALLOT_SPEC_VERSION = 1
+EXT_SHADER_SUBGROUP_BALLOT_EXTENSION_NAME = "VK_EXT_shader_subgroup_ballot"
+
+#VK_EXT_shader_subgroup_vote
+EXT_SHADER_SUBGROUP_VOTE_SPEC_VERSION = 1
+EXT_SHADER_SUBGROUP_VOTE_EXTENSION_NAME = "VK_EXT_shader_subgroup_vote"
+
+#VK_KHR_maintenance1
+KHR_MAINTENANCE1_SPEC_VERSION = 1
+KHR_MAINTENANCE1_EXTENSION_NAME = "VK_KHR_maintenance1"
+ERROR_OUT_OF_POOL_MEMORY_KHR = -1000069000
+FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR = 1<<14
+FORMAT_FEATURE_TRANSFER_DST_BIT_KHR = 1<<15
+IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR = 1<<5
+
+#VK_NVX_device_generated_commands
+NVX_DEVICE_GENERATED_COMMANDS_SPEC_VERSION = 1
+NVX_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME = "VK_NVX_device_generated_commands"
+STRUCTURE_TYPE_OBJECT_TABLE_CREATE_INFO_NVX = 1000086000
+STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NVX = 1000086001
+STRUCTURE_TYPE_CMD_PROCESS_COMMANDS_INFO_NVX = 1000086002
+STRUCTURE_TYPE_CMD_RESERVE_SPACE_FOR_COMMANDS_INFO_NVX = 1000086003
+STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX = 1000086004
+STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX = 1000086005
+PIPELINE_STAGE_COMMAND_PROCESS_BIT_NVX = 1<<17
+ACCESS_COMMAND_PROCESS_READ_BIT_NVX = 1<<17
+ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX = 1<<18
+
+#VK_EXT_direct_mode_display
+EXT_DIRECT_MODE_DISPLAY_SPEC_VERSION = 1
+EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME = "VK_EXT_direct_mode_display"
+
+#VK_EXT_acquire_xlib_display
+EXT_ACQUIRE_XLIB_DISPLAY_SPEC_VERSION = 1
+EXT_ACQUIRE_XLIB_DISPLAY_EXTENSION_NAME = "VK_EXT_acquire_xlib_display"
+
+#VK_EXT_display_surface_counter
+EXT_DISPLAY_SURFACE_COUNTER_SPEC_VERSION = 1
+EXT_DISPLAY_SURFACE_COUNTER_EXTENSION_NAME = "VK_EXT_display_surface_counter"
+STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT = 1000090000
+
+#VK_EXT_display_control
+EXT_DISPLAY_CONTROL_SPEC_VERSION = 1
+EXT_DISPLAY_CONTROL_EXTENSION_NAME = "VK_EXT_display_control"
+STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT = 1000091000
+STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT = 1000091001
+STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT = 1000091002
+STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT = 1000091003
+
+#VK_EXT_swapchain_colorspace
+EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION = 1
+EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME = "VK_EXT_swapchain_colorspace"
+COLOR_SPACE_DISPLAY_P3_LINEAR_EXT = 1000104001
+COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT = 1000104002
+COLOR_SPACE_SCRGB_LINEAR_EXT = 1000104003
+COLOR_SPACE_SCRGB_NONLINEAR_EXT = 1000104004
+COLOR_SPACE_DCI_P3_LINEAR_EXT = 1000104005
+COLOR_SPACE_DCI_P3_NONLINEAR_EXT = 1000104006
+COLOR_SPACE_BT709_LINEAR_EXT = 1000104007
+COLOR_SPACE_BT709_NONLINEAR_EXT = 1000104008
+COLOR_SPACE_BT2020_LINEAR_EXT = 1000104009
+COLOR_SPACE_BT2020_NONLINEAR_EXT = 1000104010
+COLOR_SPACE_ADOBERGB_LINEAR_EXT = 1000104011
+COLOR_SPACE_ADOBERGB_NONLINEAR_EXT = 1000104012
 
 
 

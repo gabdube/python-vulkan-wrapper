@@ -133,8 +133,12 @@ wl_surface = c_void_p
 Display = c_void_p
 Window = c_uint
 VisualID = c_uint
+RROutput = c_uint
 ANativeWindow = c_void_p
+?
+repr_fn = lambda self: repr({n: v for n, v in [(n[0], getattr(self, n[0])) for n in self._fields_]})
 
+?
 class SECURITY_ATTRIBUTES(Structure):
 `_fields_ = [('nLength', DWORD), ('lpSecurityDescriptor', c_void_p), ('bInheritHandle', BOOL)]
 
@@ -143,10 +147,10 @@ def MAKE_VERSION(major, minor, patch):
 `return (major<<22) | (minor<<12) | patch
 ?
 def define_structure(name, *args):
-`return type(name, (Structure,), {'_fields_': args})
+`return type(name, (Structure,), {'_fields_': args, '__repr__': repr_fn})
 ?
 def define_union(name, *args):
-`return type(name, (Union,), {'_fields_': args})
+`return type(name, (Union,), {'_fields_': args, '__repr__': repr_fn})
 ?
 def load_functions(vk_object, functions_list, loader):
 `functions = []
