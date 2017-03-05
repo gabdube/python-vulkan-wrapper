@@ -360,6 +360,12 @@ def add_imports():
 def add_initialization():
     SHARED['output'].write("\n\n"+INITIALIZATION_TEMPLATE+"\n")
 
+def parse_header_version():
+    for define in filter_types('define'):
+        define_name = define.find('name')
+        if define_name is not None and define_name.text == 'VK_HEADER_VERSION':
+            SHARED['output'].write(remove_prefix(define_name.text)+" = "+define_name.tail.strip()+"\n")
+
 def parse_handles():
     s = SHARED
     o = s['output']
@@ -610,6 +616,7 @@ def export():
     begin_generation()
     add_imports()
     add_initialization()
+    parse_header_version()
     parse_basetypes()
     parse_handles()
     parse_flags()

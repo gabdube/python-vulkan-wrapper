@@ -62,6 +62,7 @@ def load_functions(vk_object, functions_list, loader):
 
 API_VERSION_1_0 = MAKE_VERSION(1,0,0)
 
+HEADER_VERSION = 41
 
 # BASETYPES
 
