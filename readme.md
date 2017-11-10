@@ -1,24 +1,13 @@
 # A simple vulkan wrapper generator for python
 
-I've tried to make it easily customizable in order to generate wrapper for other languages/library without too much trouble.
-
 ## Behaviour
 
-By default, the script will fetch the last version of vk.xml in the vulkan repo on github and generate the wrapper in 'vk.py'. If this behaviour
-is not desired, it is possible to generate the wrapper from a file by editing "SHARED" data in the source code OR by passing the following arguments to the script
-
-* -s web|file - From where to fetch "vk.xml". "file" use the local filesystem, "web" use a url.
-* -p [path]   - Where vk.xml is located. This can be a path or an url (depending on the -s parameter)
-* -o [name]   - Write the output script to "name"
-
-Furthermore, it is possible to edit the default templates to add stuff to the wrapper as long as all the formatted fields ("{STUFF}") stay present.
+The script will fetch the last version of vk.xml in the vulkan repo on github and generate the wrapper in 'vk.py'.
 
 ## Usage
 
 ```
-python create_vulkan_wrapper.py [-s] [-p] [-o]
-python create_vulkan_wrapper.py -s file -p xml/vk.xml -o wrapper.py
-python create_vulkan_wrapper.py -o foo.py
+python create_vulkan_wrapper.py
 ```
 
 ## Example
@@ -28,7 +17,7 @@ python create_vulkan_wrapper.py -o foo.py
 * All vulkan types and enums are accessible through the generated script (ex: `vk.SubmitInfo` or `vk.SHADER_STAGE_VERTEX_BIT`)  
 * Exported values do not have prefixes  
 * Exported structure member names use snake case instead of camelcase (`my_arg` instead of `myArg`)
-* Exported structure member names pointer prefixes (`p_`, `pp_`) are removed
+* Exported structure member names pointer prefixes (`s_`, `p_`, `pp_`) are removed
 
 #### Loading functions
 
@@ -46,10 +35,7 @@ Families are groups of functions that share the same first argument type.
 ```
 LoaderFunctions (automatically loaded in the wrapper)
 InstanceFunctions
-PhysicalDeviceFunctions
 DeviceFunctions
-CommandBufferFunctions
-QueueFunctions
 ```
 
 
@@ -81,10 +67,6 @@ class MyInstance(object):
         for function_name, function in vk.load_functions(instance, vk.InstanceFunctions, vk.GetInstanceProcAddr):
             setattr(self, function_name, function)
 
-        # Load physical device functions
-        for function_name, function in vk.load_functions(instance, vk.PhysicalDeviceFunctions, vk.GetInstanceProcAddr):
-            setattr(self, function_name, function)
-
 class MyDevice(object):
     def __init__(self, instance):
         self.instance = instance
@@ -93,15 +75,6 @@ class MyDevice(object):
         # Load device functions
         for function_name, function in vk.load_functions(device, vk.DeviceFunctions, instance.GetDeviceProcAddr):
             setattr(self, function_name, function)
-
-        # Load command buffers functions
-        for function_name, function in vk.load_functions(device, vk.CommandBufferFunctions, instance.GetDeviceProcAddr):
-            setattr(self, function_name, function)
-
-        # Load queue functions
-        for function_name, function in vk.load_functions(device, vk.QueueFunctions, instance.GetDeviceProcAddr):
-            setattr(self, function_name, function)
-
 
 
 instance = MyInstance()
@@ -112,6 +85,7 @@ device = MyDevice(instance)
 #### Other values
 
 * Typedefs of vulkan types are also exported. Ex: (`vk.Instance`).
+* Function prototype are also exported. Ex: (`FnCreateInstance`).
 * Extensions names and versions are also exported
 * `MAKE_VERSION` is exported in order to encode vulkan versions
 * Vulkan v1.0 is defined as such: `API_VERSION_1_0 = MAKE_VERSION(1,0,0)`
