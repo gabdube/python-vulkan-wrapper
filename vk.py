@@ -102,36 +102,36 @@ PhysicalDevice = c_size_t
 Device = c_size_t
 Queue = c_size_t
 CommandBuffer = c_size_t
-Semaphore = c_size_t
-Fence = c_size_t
-DeviceMemory = c_size_t
-Buffer = c_size_t
-Image = c_size_t
-Event = c_size_t
-QueryPool = c_size_t
-BufferView = c_size_t
-ImageView = c_size_t
-ShaderModule = c_size_t
-PipelineCache = c_size_t
-PipelineLayout = c_size_t
-RenderPass = c_size_t
-Pipeline = c_size_t
-DescriptorSetLayout = c_size_t
-Sampler = c_size_t
-DescriptorPool = c_size_t
-DescriptorSet = c_size_t
-Framebuffer = c_size_t
-CommandPool = c_size_t
-SurfaceKHR = c_size_t
-SwapchainKHR = c_size_t
-DisplayKHR = c_size_t
-DisplayModeKHR = c_size_t
-DescriptorUpdateTemplateKHR = c_size_t
-SamplerYcbcrConversionKHR = c_size_t
-DebugReportCallbackEXT = c_size_t
-ObjectTableNVX = c_size_t
-IndirectCommandsLayoutNVX = c_size_t
-ValidationCacheEXT = c_size_t
+Semaphore = c_uint64
+Fence = c_uint64
+DeviceMemory = c_uint64
+Buffer = c_uint64
+Image = c_uint64
+Event = c_uint64
+QueryPool = c_uint64
+BufferView = c_uint64
+ImageView = c_uint64
+ShaderModule = c_uint64
+PipelineCache = c_uint64
+PipelineLayout = c_uint64
+RenderPass = c_uint64
+Pipeline = c_uint64
+DescriptorSetLayout = c_uint64
+Sampler = c_uint64
+DescriptorPool = c_uint64
+DescriptorSet = c_uint64
+Framebuffer = c_uint64
+CommandPool = c_uint64
+SurfaceKHR = c_uint64
+SwapchainKHR = c_uint64
+DisplayKHR = c_uint64
+DisplayModeKHR = c_uint64
+DescriptorUpdateTemplateKHR = c_uint64
+SamplerYcbcrConversionKHR = c_uint64
+DebugReportCallbackEXT = c_uint64
+ObjectTableNVX = c_uint64
+IndirectCommandsLayoutNVX = c_uint64
+ValidationCacheEXT = c_uint64
 
 
 # Flags types
@@ -475,6 +475,9 @@ STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR = 1000157001
 STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT = 1000160000
 STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT = 1000160001
 STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT = 1000174000
+STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT = 1000178000
+STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT = 1000178001
+STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT = 1000178002
 STRUCTURE_TYPE_BEGIN_RANGE = STRUCTURE_TYPE_APPLICATION_INFO
 STRUCTURE_TYPE_END_RANGE = STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO
 STRUCTURE_TYPE_RANGE_SIZE = (STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO - STRUCTURE_TYPE_APPLICATION_INFO + 1)
@@ -1436,6 +1439,9 @@ EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT_KHR = 0x00000008
 EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT_KHR = 0x00000010
 EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR = 0x00000020
 EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR = 0x00000040
+EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT = 0x00000200
+EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT = 0x00000080
+EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT = 0x00000100
 
 ExternalMemoryFeatureFlagBitsKHR = c_uint32
 EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT_KHR = 0x00000001
@@ -1718,13 +1724,13 @@ VALIDATION_CACHE_HEADER_VERSION_END_RANGE_EXT = VALIDATION_CACHE_HEADER_VERSION_
 VALIDATION_CACHE_HEADER_VERSION_RANGE_SIZE_EXT = (VALIDATION_CACHE_HEADER_VERSION_ONE_EXT - VALIDATION_CACHE_HEADER_VERSION_ONE_EXT + 1)
 
 QueueGlobalPriorityEXT = c_uint32
-QUEUE_GLOBAL_PRIORITY_LOW = 128
-QUEUE_GLOBAL_PRIORITY_MEDIUM = 256
-QUEUE_GLOBAL_PRIORITY_HIGH = 512
-QUEUE_GLOBAL_PRIORITY_REALTIME = 1024
-QUEUE_GLOBAL_PRIORITY_BEGIN_RANGE_EXT = QUEUE_GLOBAL_PRIORITY_LOW
-QUEUE_GLOBAL_PRIORITY_END_RANGE_EXT = QUEUE_GLOBAL_PRIORITY_REALTIME
-QUEUE_GLOBAL_PRIORITY_RANGE_SIZE_EXT = (QUEUE_GLOBAL_PRIORITY_REALTIME - QUEUE_GLOBAL_PRIORITY_LOW + 1)
+QUEUE_GLOBAL_PRIORITY_LOW_EXT = 128
+QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT = 256
+QUEUE_GLOBAL_PRIORITY_HIGH_EXT = 512
+QUEUE_GLOBAL_PRIORITY_REALTIME_EXT = 1024
+QUEUE_GLOBAL_PRIORITY_BEGIN_RANGE_EXT = QUEUE_GLOBAL_PRIORITY_LOW_EXT
+QUEUE_GLOBAL_PRIORITY_END_RANGE_EXT = QUEUE_GLOBAL_PRIORITY_REALTIME_EXT
+QUEUE_GLOBAL_PRIORITY_RANGE_SIZE_EXT = (QUEUE_GLOBAL_PRIORITY_REALTIME_EXT - QUEUE_GLOBAL_PRIORITY_LOW_EXT + 1)
 
 
 
@@ -4186,13 +4192,27 @@ DeviceQueueGlobalPriorityCreateInfoEXT = define_struct('DeviceQueueGlobalPriorit
     ('global_priority', QueueGlobalPriorityEXT),
 )
 
+ImportMemoryHostPointerInfoEXT = define_struct('ImportMemoryHostPointerInfoEXT', 
+    ('type', StructureType),
+    ('next', c_void_p),
+    ('handle_type', ExternalMemoryHandleTypeFlagBitsKHR),
+    ('host_pointer', c_void_p),
+)
+
+MemoryHostPointerPropertiesEXT = define_struct('MemoryHostPointerPropertiesEXT', 
+    ('type', StructureType),
+    ('next', c_void_p),
+    ('memory_type_bits', c_uint32),
+)
+
+PhysicalDeviceExternalMemoryHostPropertiesEXT = define_struct('PhysicalDeviceExternalMemoryHostPropertiesEXT', 
+    ('type', StructureType),
+    ('next', c_void_p),
+    ('min_imported_host_pointer_alignment', DeviceSize),
+)
 
 
-FnAllocationFunction = FUNCTYPE(c_void_p, c_void_p, c_size_t, c_size_t, SystemAllocationScope)
-FnReallocationFunction = FUNCTYPE(c_void_p, c_void_p, c_void_p, c_size_t, c_size_t, SystemAllocationScope)
-FnFreeFunction = FUNCTYPE(None, c_void_p, c_void_p)
-FnInternalAllocationNotification = FUNCTYPE(None, c_void_p, c_size_t, InternalAllocationType, SystemAllocationScope)
-FnInternalFreeNotification = FUNCTYPE(None, c_void_p, c_size_t, InternalAllocationType, SystemAllocationScope)
+
 FnVoidFunction = FUNCTYPE(None, )
 FnCreateInstance = FUNCTYPE(Result, POINTER(InstanceCreateInfo), POINTER(AllocationCallbacks), POINTER(Instance))
 FnDestroyInstance = FUNCTYPE(None, Instance, POINTER(AllocationCallbacks))
@@ -4398,7 +4418,6 @@ FnCreateSamplerYcbcrConversionKHR = FUNCTYPE(Result, Device, POINTER(SamplerYcbc
 FnDestroySamplerYcbcrConversionKHR = FUNCTYPE(None, Device, SamplerYcbcrConversionKHR, POINTER(AllocationCallbacks))
 FnBindBufferMemory2KHR = FUNCTYPE(Result, Device, c_uint32, POINTER(BindBufferMemoryInfoKHR))
 FnBindImageMemory2KHR = FUNCTYPE(Result, Device, c_uint32, POINTER(BindImageMemoryInfoKHR))
-FnDebugReportCallbackEXT = FUNCTYPE(Bool32, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int32, c_char_p, c_char_p, c_void_p)
 FnCreateDebugReportCallbackEXT = FUNCTYPE(Result, Instance, POINTER(DebugReportCallbackCreateInfoEXT), POINTER(AllocationCallbacks), POINTER(DebugReportCallbackEXT))
 FnDestroyDebugReportCallbackEXT = FUNCTYPE(None, Instance, DebugReportCallbackEXT, POINTER(AllocationCallbacks))
 FnDebugReportMessageEXT = FUNCTYPE(None, Instance, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_int32, c_char_p, c_char_p)
@@ -4451,7 +4470,75 @@ FnCreateValidationCacheEXT = FUNCTYPE(Result, Device, POINTER(ValidationCacheCre
 FnDestroyValidationCacheEXT = FUNCTYPE(None, Device, ValidationCacheEXT, POINTER(AllocationCallbacks))
 FnMergeValidationCachesEXT = FUNCTYPE(Result, Device, ValidationCacheEXT, c_uint32, POINTER(ValidationCacheEXT))
 FnGetValidationCacheDataEXT = FUNCTYPE(Result, Device, ValidationCacheEXT, POINTER(c_size_t), c_void_p)
+FnGetMemoryHostPointerPropertiesEXT = FUNCTYPE(Result, Device, ExternalMemoryHandleTypeFlagBitsKHR, c_void_p, POINTER(MemoryHostPointerPropertiesEXT))
 
+
+InstanceFunctions = (
+  (b"vkDestroyInstance", FnDestroyInstance),
+  (b"vkEnumeratePhysicalDevices", FnEnumeratePhysicalDevices),
+  (b"vkGetPhysicalDeviceFeatures", FnGetPhysicalDeviceFeatures),
+  (b"vkGetPhysicalDeviceFormatProperties", FnGetPhysicalDeviceFormatProperties),
+  (b"vkGetPhysicalDeviceImageFormatProperties", FnGetPhysicalDeviceImageFormatProperties),
+  (b"vkGetPhysicalDeviceProperties", FnGetPhysicalDeviceProperties),
+  (b"vkGetPhysicalDeviceQueueFamilyProperties", FnGetPhysicalDeviceQueueFamilyProperties),
+  (b"vkGetPhysicalDeviceMemoryProperties", FnGetPhysicalDeviceMemoryProperties),
+  (b"vkGetInstanceProcAddr", FnGetInstanceProcAddr),
+  (b"vkGetDeviceProcAddr", FnGetDeviceProcAddr),
+  (b"vkCreateDevice", FnCreateDevice),
+  (b"vkEnumerateDeviceExtensionProperties", FnEnumerateDeviceExtensionProperties),
+  (b"vkEnumerateDeviceLayerProperties", FnEnumerateDeviceLayerProperties),
+  (b"vkGetPhysicalDeviceSparseImageFormatProperties", FnGetPhysicalDeviceSparseImageFormatProperties),
+  (b"vkDestroySurfaceKHR", FnDestroySurfaceKHR),
+  (b"vkGetPhysicalDeviceSurfaceSupportKHR", FnGetPhysicalDeviceSurfaceSupportKHR),
+  (b"vkGetPhysicalDeviceSurfaceCapabilitiesKHR", FnGetPhysicalDeviceSurfaceCapabilitiesKHR),
+  (b"vkGetPhysicalDeviceSurfaceFormatsKHR", FnGetPhysicalDeviceSurfaceFormatsKHR),
+  (b"vkGetPhysicalDeviceSurfacePresentModesKHR", FnGetPhysicalDeviceSurfacePresentModesKHR),
+  (b"vkGetPhysicalDeviceDisplayPropertiesKHR", FnGetPhysicalDeviceDisplayPropertiesKHR),
+  (b"vkGetPhysicalDeviceDisplayPlanePropertiesKHR", FnGetPhysicalDeviceDisplayPlanePropertiesKHR),
+  (b"vkGetDisplayPlaneSupportedDisplaysKHR", FnGetDisplayPlaneSupportedDisplaysKHR),
+  (b"vkGetDisplayModePropertiesKHR", FnGetDisplayModePropertiesKHR),
+  (b"vkCreateDisplayModeKHR", FnCreateDisplayModeKHR),
+  (b"vkGetDisplayPlaneCapabilitiesKHR", FnGetDisplayPlaneCapabilitiesKHR),
+  (b"vkCreateDisplayPlaneSurfaceKHR", FnCreateDisplayPlaneSurfaceKHR),
+  (b"vkCreateXlibSurfaceKHR", FnCreateXlibSurfaceKHR),
+  (b"vkGetPhysicalDeviceXlibPresentationSupportKHR", FnGetPhysicalDeviceXlibPresentationSupportKHR),
+  (b"vkCreateXcbSurfaceKHR", FnCreateXcbSurfaceKHR),
+  (b"vkGetPhysicalDeviceXcbPresentationSupportKHR", FnGetPhysicalDeviceXcbPresentationSupportKHR),
+  (b"vkCreateWaylandSurfaceKHR", FnCreateWaylandSurfaceKHR),
+  (b"vkGetPhysicalDeviceWaylandPresentationSupportKHR", FnGetPhysicalDeviceWaylandPresentationSupportKHR),
+  (b"vkCreateMirSurfaceKHR", FnCreateMirSurfaceKHR),
+  (b"vkGetPhysicalDeviceMirPresentationSupportKHR", FnGetPhysicalDeviceMirPresentationSupportKHR),
+  (b"vkCreateAndroidSurfaceKHR", FnCreateAndroidSurfaceKHR),
+  (b"vkCreateWin32SurfaceKHR", FnCreateWin32SurfaceKHR),
+  (b"vkGetPhysicalDeviceWin32PresentationSupportKHR", FnGetPhysicalDeviceWin32PresentationSupportKHR),
+  (b"vkGetPhysicalDeviceFeatures2KHR", FnGetPhysicalDeviceFeatures2KHR),
+  (b"vkGetPhysicalDeviceProperties2KHR", FnGetPhysicalDeviceProperties2KHR),
+  (b"vkGetPhysicalDeviceFormatProperties2KHR", FnGetPhysicalDeviceFormatProperties2KHR),
+  (b"vkGetPhysicalDeviceImageFormatProperties2KHR", FnGetPhysicalDeviceImageFormatProperties2KHR),
+  (b"vkGetPhysicalDeviceQueueFamilyProperties2KHR", FnGetPhysicalDeviceQueueFamilyProperties2KHR),
+  (b"vkGetPhysicalDeviceMemoryProperties2KHR", FnGetPhysicalDeviceMemoryProperties2KHR),
+  (b"vkGetPhysicalDeviceSparseImageFormatProperties2KHR", FnGetPhysicalDeviceSparseImageFormatProperties2KHR),
+  (b"vkGetPhysicalDeviceExternalBufferPropertiesKHR", FnGetPhysicalDeviceExternalBufferPropertiesKHR),
+  (b"vkGetPhysicalDeviceExternalSemaphorePropertiesKHR", FnGetPhysicalDeviceExternalSemaphorePropertiesKHR),
+  (b"vkGetPhysicalDeviceExternalFencePropertiesKHR", FnGetPhysicalDeviceExternalFencePropertiesKHR),
+  (b"vkGetPhysicalDeviceSurfaceCapabilities2KHR", FnGetPhysicalDeviceSurfaceCapabilities2KHR),
+  (b"vkGetPhysicalDeviceSurfaceFormats2KHR", FnGetPhysicalDeviceSurfaceFormats2KHR),
+  (b"vkCreateDebugReportCallbackEXT", FnCreateDebugReportCallbackEXT),
+  (b"vkDestroyDebugReportCallbackEXT", FnDestroyDebugReportCallbackEXT),
+  (b"vkDebugReportMessageEXT", FnDebugReportMessageEXT),
+  (b"vkGetPhysicalDeviceExternalImageFormatPropertiesNV", FnGetPhysicalDeviceExternalImageFormatPropertiesNV),
+  (b"vkGetPhysicalDevicePresentRectanglesKHX", FnGetPhysicalDevicePresentRectanglesKHX),
+  (b"vkCreateViSurfaceNN", FnCreateViSurfaceNN),
+  (b"vkEnumeratePhysicalDeviceGroupsKHX", FnEnumeratePhysicalDeviceGroupsKHX),
+  (b"vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX", FnGetPhysicalDeviceGeneratedCommandsPropertiesNVX),
+  (b"vkReleaseDisplayEXT", FnReleaseDisplayEXT),
+  (b"vkAcquireXlibDisplayEXT", FnAcquireXlibDisplayEXT),
+  (b"vkGetRandROutputDisplayEXT", FnGetRandROutputDisplayEXT),
+  (b"vkGetPhysicalDeviceSurfaceCapabilities2EXT", FnGetPhysicalDeviceSurfaceCapabilities2EXT),
+  (b"vkCreateIOSSurfaceMVK", FnCreateIOSSurfaceMVK),
+  (b"vkCreateMacOSSurfaceMVK", FnCreateMacOSSurfaceMVK),
+  (b"vkGetPhysicalDeviceMultisamplePropertiesEXT", FnGetPhysicalDeviceMultisamplePropertiesEXT),
+)
 
 DeviceFunctions = (
   (b"vkDestroyDevice", FnDestroyDevice),
@@ -4643,73 +4730,7 @@ DeviceFunctions = (
   (b"vkDestroyValidationCacheEXT", FnDestroyValidationCacheEXT),
   (b"vkMergeValidationCachesEXT", FnMergeValidationCachesEXT),
   (b"vkGetValidationCacheDataEXT", FnGetValidationCacheDataEXT),
-)
-
-InstanceFunctions = (
-  (b"vkDestroyInstance", FnDestroyInstance),
-  (b"vkEnumeratePhysicalDevices", FnEnumeratePhysicalDevices),
-  (b"vkGetPhysicalDeviceFeatures", FnGetPhysicalDeviceFeatures),
-  (b"vkGetPhysicalDeviceFormatProperties", FnGetPhysicalDeviceFormatProperties),
-  (b"vkGetPhysicalDeviceImageFormatProperties", FnGetPhysicalDeviceImageFormatProperties),
-  (b"vkGetPhysicalDeviceProperties", FnGetPhysicalDeviceProperties),
-  (b"vkGetPhysicalDeviceQueueFamilyProperties", FnGetPhysicalDeviceQueueFamilyProperties),
-  (b"vkGetPhysicalDeviceMemoryProperties", FnGetPhysicalDeviceMemoryProperties),
-  (b"vkGetInstanceProcAddr", FnGetInstanceProcAddr),
-  (b"vkGetDeviceProcAddr", FnGetDeviceProcAddr),
-  (b"vkCreateDevice", FnCreateDevice),
-  (b"vkEnumerateDeviceExtensionProperties", FnEnumerateDeviceExtensionProperties),
-  (b"vkEnumerateDeviceLayerProperties", FnEnumerateDeviceLayerProperties),
-  (b"vkGetPhysicalDeviceSparseImageFormatProperties", FnGetPhysicalDeviceSparseImageFormatProperties),
-  (b"vkDestroySurfaceKHR", FnDestroySurfaceKHR),
-  (b"vkGetPhysicalDeviceSurfaceSupportKHR", FnGetPhysicalDeviceSurfaceSupportKHR),
-  (b"vkGetPhysicalDeviceSurfaceCapabilitiesKHR", FnGetPhysicalDeviceSurfaceCapabilitiesKHR),
-  (b"vkGetPhysicalDeviceSurfaceFormatsKHR", FnGetPhysicalDeviceSurfaceFormatsKHR),
-  (b"vkGetPhysicalDeviceSurfacePresentModesKHR", FnGetPhysicalDeviceSurfacePresentModesKHR),
-  (b"vkGetPhysicalDeviceDisplayPropertiesKHR", FnGetPhysicalDeviceDisplayPropertiesKHR),
-  (b"vkGetPhysicalDeviceDisplayPlanePropertiesKHR", FnGetPhysicalDeviceDisplayPlanePropertiesKHR),
-  (b"vkGetDisplayPlaneSupportedDisplaysKHR", FnGetDisplayPlaneSupportedDisplaysKHR),
-  (b"vkGetDisplayModePropertiesKHR", FnGetDisplayModePropertiesKHR),
-  (b"vkCreateDisplayModeKHR", FnCreateDisplayModeKHR),
-  (b"vkGetDisplayPlaneCapabilitiesKHR", FnGetDisplayPlaneCapabilitiesKHR),
-  (b"vkCreateDisplayPlaneSurfaceKHR", FnCreateDisplayPlaneSurfaceKHR),
-  (b"vkCreateXlibSurfaceKHR", FnCreateXlibSurfaceKHR),
-  (b"vkGetPhysicalDeviceXlibPresentationSupportKHR", FnGetPhysicalDeviceXlibPresentationSupportKHR),
-  (b"vkCreateXcbSurfaceKHR", FnCreateXcbSurfaceKHR),
-  (b"vkGetPhysicalDeviceXcbPresentationSupportKHR", FnGetPhysicalDeviceXcbPresentationSupportKHR),
-  (b"vkCreateWaylandSurfaceKHR", FnCreateWaylandSurfaceKHR),
-  (b"vkGetPhysicalDeviceWaylandPresentationSupportKHR", FnGetPhysicalDeviceWaylandPresentationSupportKHR),
-  (b"vkCreateMirSurfaceKHR", FnCreateMirSurfaceKHR),
-  (b"vkGetPhysicalDeviceMirPresentationSupportKHR", FnGetPhysicalDeviceMirPresentationSupportKHR),
-  (b"vkCreateAndroidSurfaceKHR", FnCreateAndroidSurfaceKHR),
-  (b"vkCreateWin32SurfaceKHR", FnCreateWin32SurfaceKHR),
-  (b"vkGetPhysicalDeviceWin32PresentationSupportKHR", FnGetPhysicalDeviceWin32PresentationSupportKHR),
-  (b"vkGetPhysicalDeviceFeatures2KHR", FnGetPhysicalDeviceFeatures2KHR),
-  (b"vkGetPhysicalDeviceProperties2KHR", FnGetPhysicalDeviceProperties2KHR),
-  (b"vkGetPhysicalDeviceFormatProperties2KHR", FnGetPhysicalDeviceFormatProperties2KHR),
-  (b"vkGetPhysicalDeviceImageFormatProperties2KHR", FnGetPhysicalDeviceImageFormatProperties2KHR),
-  (b"vkGetPhysicalDeviceQueueFamilyProperties2KHR", FnGetPhysicalDeviceQueueFamilyProperties2KHR),
-  (b"vkGetPhysicalDeviceMemoryProperties2KHR", FnGetPhysicalDeviceMemoryProperties2KHR),
-  (b"vkGetPhysicalDeviceSparseImageFormatProperties2KHR", FnGetPhysicalDeviceSparseImageFormatProperties2KHR),
-  (b"vkGetPhysicalDeviceExternalBufferPropertiesKHR", FnGetPhysicalDeviceExternalBufferPropertiesKHR),
-  (b"vkGetPhysicalDeviceExternalSemaphorePropertiesKHR", FnGetPhysicalDeviceExternalSemaphorePropertiesKHR),
-  (b"vkGetPhysicalDeviceExternalFencePropertiesKHR", FnGetPhysicalDeviceExternalFencePropertiesKHR),
-  (b"vkGetPhysicalDeviceSurfaceCapabilities2KHR", FnGetPhysicalDeviceSurfaceCapabilities2KHR),
-  (b"vkGetPhysicalDeviceSurfaceFormats2KHR", FnGetPhysicalDeviceSurfaceFormats2KHR),
-  (b"vkCreateDebugReportCallbackEXT", FnCreateDebugReportCallbackEXT),
-  (b"vkDestroyDebugReportCallbackEXT", FnDestroyDebugReportCallbackEXT),
-  (b"vkDebugReportMessageEXT", FnDebugReportMessageEXT),
-  (b"vkGetPhysicalDeviceExternalImageFormatPropertiesNV", FnGetPhysicalDeviceExternalImageFormatPropertiesNV),
-  (b"vkGetPhysicalDevicePresentRectanglesKHX", FnGetPhysicalDevicePresentRectanglesKHX),
-  (b"vkCreateViSurfaceNN", FnCreateViSurfaceNN),
-  (b"vkEnumeratePhysicalDeviceGroupsKHX", FnEnumeratePhysicalDeviceGroupsKHX),
-  (b"vkGetPhysicalDeviceGeneratedCommandsPropertiesNVX", FnGetPhysicalDeviceGeneratedCommandsPropertiesNVX),
-  (b"vkReleaseDisplayEXT", FnReleaseDisplayEXT),
-  (b"vkAcquireXlibDisplayEXT", FnAcquireXlibDisplayEXT),
-  (b"vkGetRandROutputDisplayEXT", FnGetRandROutputDisplayEXT),
-  (b"vkGetPhysicalDeviceSurfaceCapabilities2EXT", FnGetPhysicalDeviceSurfaceCapabilities2EXT),
-  (b"vkCreateIOSSurfaceMVK", FnCreateIOSSurfaceMVK),
-  (b"vkCreateMacOSSurfaceMVK", FnCreateMacOSSurfaceMVK),
-  (b"vkGetPhysicalDeviceMultisamplePropertiesEXT", FnGetPhysicalDeviceMultisamplePropertiesEXT),
+  (b"vkGetMemoryHostPointerPropertiesEXT", FnGetMemoryHostPointerPropertiesEXT),
 )
 
 LoaderFunctions = (

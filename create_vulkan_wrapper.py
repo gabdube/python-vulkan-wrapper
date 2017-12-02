@@ -189,7 +189,7 @@ def parse_handles_def(f):
 
     handles_non_dispatchable = re.findall("VK_DEFINE_NON_DISPATCHABLE_HANDLE\(Vk(\w+)\)", src, re.S)
     for h in handles_non_dispatchable:
-        f.write("{} = c_size_t\n".format(h))
+        f.write("{} = c_uint64\n".format(h))
 
 def parse_flags_def(f):
     f.write("# Flags types\n")
@@ -238,8 +238,10 @@ def parse_functions(f):
     data = re.findall("typedef (\w+\*?) \(\w+ \*(\w+)\)\((.+?)\);", src, re.S)
 
     for rt, name, fields in data:
-        data_fields = ', '.join([do_type(t) for t in re.findall("(?:\s*|)(.+?)\s*\w+(?:,|$)", fields)])
-        f.write("{} = FUNCTYPE({}, {})\n".format(no_vk(name), do_type(rt), data_fields))
+        no_vk_name = no_vk(name)
+        if no_vk_name not in ('FnAllocationFunction', 'FnReallocationFunction', 'FnFreeFunction', 'FnInternalAllocationNotification', 'FnInternalFreeNotification', 'FnDebugReportCallbackEXT'):
+            data_fields = ', '.join([do_type(t) for t in re.findall("(?:\s*|)(.+?)\s*\w+(?:,|$)", fields)])
+            f.write("{} = FUNCTYPE({}, {})\n".format(no_vk_name, do_type(rt), data_fields))
 
 def group_functions(f):
     data = re.findall("typedef (\w+\*?) \(\w+ \*(\w+)\)\((.+?)\);", src, re.S)
