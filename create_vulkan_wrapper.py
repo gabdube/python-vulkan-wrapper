@@ -1,11 +1,16 @@
 import re
 import urllib.request as req
 
-src = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/1.0/src/vulkan/vulkan.h").read().decode('utf-8')
+src = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_core.h").read().decode('utf-8')
+
+src_win32 = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_win32.h").read().decode('utf-8')
+
+src += "\n\n" + src_win32
+
 
 BASE = r"""
 #
-# Vulkan wrapper generated from "https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/1.0/src/vulkan/vulkan.h"
+# Vulkan wrapper generated from "https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_core.h"
 #
 
 from ctypes import c_int8, c_uint16, c_int32, c_uint32, c_uint64, c_size_t, c_float, c_char, c_char_p, c_void_p, POINTER, Structure, Union, cast
@@ -98,8 +103,12 @@ MAX_MEMORY_HEAPS = 16
 MAX_EXTENSION_NAME_SIZE = 256
 MAX_DESCRIPTION_SIZE = 256
 MAX_DEVICE_GROUP_SIZE_KHX = 32
+MAX_DEVICE_GROUP_SIZE = 32
 LUID_SIZE_KHX = 8
 LUID_SIZE_KHR = 8
+LUID_SIZE = 8
+MAX_DRIVER_NAME_SIZE_KHR = 256
+MAX_DRIVER_INFO_SIZE_KHR = 256
 
 
 """[1:]
@@ -120,6 +129,7 @@ def translate_type(t):
         'int32_t': 'c_int32',
         'int': 'c_int32',
         'uint8_t': 'c_int8',
+        "uint16_t": 'c_uint16',
         "char": "c_char",
         "void": "None", 
         "void*": "c_void_p", 
@@ -220,19 +230,34 @@ FnFreeFunction = FUNCTYPE(None, c_void_p, c_void_p)
 FnInternalAllocationNotification = FUNCTYPE(None, c_void_p, c_size_t, InternalAllocationType, SystemAllocationScope)
 FnInternalFreeNotification = FUNCTYPE(None, c_void_p, c_size_t, InternalAllocationType, SystemAllocationScope)
 FnDebugReportCallbackEXT = FUNCTYPE(Bool32, DebugReportFlagsEXT, DebugReportObjectTypeEXT, c_uint64, c_size_t, c_uint32, c_char_p, c_char_p, c_void_p)
+
 """[1::])
 
 def parse_structs(f):
     data = re.findall("typedef (struct|union) Vk(\w+?) {(.+?)} \w+?;", src, re.S)
 
     for _type, name, fields in data:
+
+        # Structures that are not parsed correctly and not used anywhere else
+        if name in ("BaseOutStructure", "BaseInStructure"):
+            continue
+
+        # A callback definition MUST be written just before this struct
+        if name == "DebugUtilsMessengerCreateInfoEXT":
+            f.write("FnDebugUtilsMessengerCallbackEXT = FUNCTYPE(Bool32, DebugUtilsMessageSeverityFlagBitsEXT, DebugUtilsMessageTypeFlagsEXT, POINTER(DebugUtilsMessengerCallbackDataEXT), c_void_p)\n\n")
+
         fields = re.findall("\s+(.+?)\s+([_a-zA-Z0-9[\]]+);", fields)
         f.write("{0} = define_{1}('{0}', \n".format(name, _type))
-        for type_, name in fields:
-            if '[' in name:
-                name, type_ = parse_array(name, type_)
-            f.write("    ('{}', {}),\n".format(fix_arg(name), do_type(type_)))
+        for type_, fname in fields:
+            if '[' in fname:
+                fname, type_ = parse_array(fname, type_)
+            f.write("    ('{}', {}),\n".format(fix_arg(fname), do_type(type_)))
         f.write(")\n\n")
+
+        # Some struct name that are not redefined automatically
+        if name in ("MemoryRequirements2",):
+            f.write("MemoryRequirements2KHR = MemoryRequirements2\n\n")
+
 
 def parse_functions(f):
     data = re.findall("typedef (\w+\*?) \(\w+ \*(\w+)\)\((.+?)\);", src, re.S)
