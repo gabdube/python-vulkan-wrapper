@@ -5,7 +5,9 @@ src = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/ma
 
 src_win32 = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_win32.h").read().decode('utf-8')
 
-src += "\n\n" + src_win32
+src_xcb = req.urlopen("https://raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/master/include/vulkan/vulkan_xcb.h").read().decode('utf-8')
+
+src += "\n\n" + src_win32 + "\n\n" + src_xcb
 
 
 BASE = r"""
